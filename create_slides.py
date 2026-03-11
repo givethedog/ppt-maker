@@ -43,7 +43,7 @@ def add_shape(slide, left, top, width, height, color, alpha=None):
     return shape
 
 
-def add_text(slide, left, top, width, height, text, size=18, color=WHITE, bold=False, align=PP_ALIGN.LEFT, font_name="Arial"):
+def add_text(slide, left, top, width, height, text, size=18, color=WHITE, bold=False, align=PP_ALIGN.LEFT, font_name="Apple SD Gothic Neo"):
     txBox = slide.shapes.add_textbox(left, top, width, height)
     tf = txBox.text_frame
     tf.word_wrap = True
@@ -69,7 +69,7 @@ def add_bullet_list(slide, left, top, width, height, items, size=16, color=WHITE
         p.text = item
         p.font.size = Pt(size)
         p.font.color.rgb = color
-        p.font.name = "Arial"
+        p.font.name = "Apple SD Gothic Neo"
         p.space_after = spacing
     return txBox
 
@@ -109,7 +109,54 @@ add_text(slide, Inches(2), Inches(4.5), Inches(9), Inches(1),
          size=20, color=LIGHT_GRAY, align=PP_ALIGN.CENTER)
 
 # ════════════════════════════════════════════
-# 슬라이드 3: 타임라인
+# 슬라이드 3: 용어 설명
+# ════════════════════════════════════════════
+slide = prs.slides.add_slide(prs.slide_layouts[6])
+set_bg(slide, BG_DARK)
+
+add_text(slide, Inches(0.5), Inches(0.3), Inches(12), Inches(0.7),
+         "오늘 발표에서 나올 주요 용어", size=32, color=WHITE, bold=True)
+
+add_text(slide, Inches(0.5), Inches(1.0), Inches(12), Inches(0.4),
+         "AI/IT 용어가 많이 등장합니다. 핵심만 먼저 짚고 갈게요!",
+         size=16, color=LIGHT_GRAY)
+
+terms = [
+    ("LLM", "Large Language Model", "ChatGPT 같은 대규모 언어 AI 모델", ACCENT),
+    ("에이전트", "Agent", "스스로 판단하고 행동하는 AI 프로그램", ACCENT2),
+    ("MCP", "Model Context Protocol", "AI가 외부 도구에 접속하는 표준 규격 (USB-C 같은 것)", ACCENT3),
+    ("CLI", "Command Line Interface", "터미널/명령줄 — 마우스 대신 텍스트로 조작", YELLOW),
+    ("토큰", "Token", "AI가 텍스트를 처리하는 단위 (≈ 한글 1글자 or 영어 4글자)", ORANGE),
+    ("RAG", "Retrieval Augmented Generation", "AI가 외부 문서를 검색해서 답변에 활용하는 기술", N8N_COLOR),
+    ("워크플로우", "Workflow", "업무 처리 흐름을 자동화한 것 (A→B→C 순서대로 실행)", ACCENT),
+    ("오케스트레이션", "Orchestration", "여러 AI/도구를 지휘·조율하는 것 (지휘자 역할)", ACCENT2),
+]
+
+for i, (term_kr, term_en, desc, color) in enumerate(terms):
+    row = i // 2
+    col = i % 2
+    x = Inches(0.5 + col * 6.3)
+    y = Inches(1.6 + row * 1.35)
+
+    add_shape(slide, x, y, Inches(6.0), Inches(1.2), BG_MID)
+
+    # 색상 왼쪽 바
+    bar = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, x, y, Inches(0.1), Inches(1.2))
+    bar.fill.solid()
+    bar.fill.fore_color.rgb = color
+    bar.line.fill.background()
+
+    add_text(slide, x + Inches(0.3), y + Inches(0.05), Inches(2.5), Inches(0.45),
+             f"{term_kr} ({term_en})", size=15, color=color, bold=True)
+    add_text(slide, x + Inches(0.3), y + Inches(0.5), Inches(5.4), Inches(0.6),
+             desc, size=13, color=LIGHT_GRAY)
+
+add_text(slide, Inches(0.5), Inches(7.0), Inches(12), Inches(0.4),
+         "💡 발표 중 모르는 용어가 나오면 언제든 질문해 주세요!",
+         size=14, color=ACCENT, bold=True, align=PP_ALIGN.CENTER)
+
+# ════════════════════════════════════════════
+# 슬라이드 4: 타임라인
 # ════════════════════════════════════════════
 slide = prs.slides.add_slide(prs.slide_layouts[6])
 set_bg(slide, BG_DARK)
@@ -307,21 +354,59 @@ for i, (name, feature, note) in enumerate(services):
     add_text(slide, Inches(8.5), y + Inches(0.15), Inches(4), Inches(0.4),
              note, size=14, color=LIGHT_GRAY)
 
-# CLI vs MCP
-add_text(slide, Inches(0.5), Inches(5.8), Inches(12), Inches(0.5),
-         "CLI vs MCP: 토큰 효율 비교", size=18, color=WHITE, bold=True)
-
-add_text(slide, Inches(0.8), Inches(6.3), Inches(5), Inches(0.4),
-         "CLI (gh, kubectl): ~200 토큰", size=16, color=ACCENT3)
-add_text(slide, Inches(6.5), Inches(6.3), Inches(5), Inches(0.4),
-         "MCP (GitHub 93개 도구): ~55,000 토큰", size=16, color=ORANGE)
-
-add_text(slide, Inches(0.5), Inches(6.9), Inches(12), Inches(0.4),
-         "→ MCP는 사라지지 않지만, \"만능 열쇠\"에서 \"여러 방법 중 하나\"로 변화. 진짜 승자: 오케스트레이션 레이어",
-         size=14, color=ACCENT, bold=True)
+add_text(slide, Inches(0.5), Inches(6.0), Inches(12), Inches(0.4),
+         "→ 주요 서비스들이 자체 AI를 내장하면서 MCP 의존도가 줄어드는 추세",
+         size=15, color=ACCENT, bold=True, align=PP_ALIGN.CENTER)
 
 # ════════════════════════════════════════════
-# 슬라이드 8: CLI 회귀 & 바이브 코딩
+# 슬라이드 9: CLI vs MCP 효율성
+# ════════════════════════════════════════════
+slide = prs.slides.add_slide(prs.slide_layouts[6])
+set_bg(slide, BG_DARK)
+
+add_text(slide, Inches(0.5), Inches(0.3), Inches(12), Inches(0.7),
+         "CLI vs MCP: 효율성 논쟁", size=32, color=WHITE, bold=True)
+
+add_text(slide, Inches(0.5), Inches(1.2), Inches(12), Inches(0.5),
+         "CLI 도구가 MCP보다 AI 에이전트에게 더 효율적일 수 있다",
+         size=18, color=LIGHT_GRAY)
+
+# 비교 카드 - CLI
+add_shape(slide, Inches(0.5), Inches(2.2), Inches(5.8), Inches(3.0), BG_MID)
+add_text(slide, Inches(0.8), Inches(2.3), Inches(5.2), Inches(0.5),
+         "CLI 방식 (gh, kubectl 등)", size=20, color=ACCENT3, bold=True)
+cli_items = [
+    "토큰 비용: ~200 토큰",
+    "LLM이 이미 학습 데이터에서 잘 알고 있음",
+    "벤치마크 33% 우위",
+    "예: gh pr list → 바로 실행",
+]
+add_bullet_list(slide, Inches(0.8), Inches(3.0), Inches(5.2), Inches(2.0),
+                cli_items, size=15, color=WHITE)
+
+# 비교 카드 - MCP
+add_shape(slide, Inches(7), Inches(2.2), Inches(5.8), Inches(3.0), BG_MID)
+add_text(slide, Inches(7.3), Inches(2.3), Inches(5.2), Inches(0.5),
+         "MCP 방식", size=20, color=ORANGE, bold=True)
+mcp_items = [
+    "토큰 비용: ~55,000 토큰 (GitHub 93개 도구)",
+    "런타임에 처음 만나는 스키마",
+    "컨텍스트 소모 과다",
+    "범용성은 높지만 비효율적",
+]
+add_bullet_list(slide, Inches(7.3), Inches(3.0), Inches(5.2), Inches(2.0),
+                mcp_items, size=15, color=LIGHT_GRAY)
+
+# 결론
+add_shape(slide, Inches(1.5), Inches(5.8), Inches(10), Inches(1.2), BG_MID)
+add_text(slide, Inches(1.8), Inches(5.9), Inches(9.4), Inches(1.0),
+         "MCP는 사라지지 않는다 (이미 표준)\n"
+         "하지만 \"만능 열쇠\"에서 \"여러 방법 중 하나\"로 변화\n"
+         "진짜 승자: 이 모든 것을 조합하는 오케스트레이션 레이어 ⭐",
+         size=16, color=ACCENT, bold=True, align=PP_ALIGN.CENTER)
+
+# ════════════════════════════════════════════
+# 슬라이드 10: CLI 회귀 & 바이브 코딩
 # ════════════════════════════════════════════
 slide = prs.slides.add_slide(prs.slide_layouts[6])
 set_bg(slide, BG_DARK)
@@ -409,28 +494,85 @@ for ri, row in enumerate(rows):
         add_text(slide, x + Inches(0.2), y + Inches(0.05), Inches(3.6), Inches(0.5),
                  cell, size=14, color=color, align=PP_ALIGN.CENTER)
 
-# 7요소
-add_text(slide, Inches(0.5), Inches(5.2), Inches(12), Inches(0.5),
-         "컨텍스트의 7요소", size=20, color=WHITE, bold=True)
+add_text(slide, Inches(0.5), Inches(5.2), Inches(12), Inches(0.4),
+         "핵심: 프롬프트 = '무엇을 물어볼까'  vs  컨텍스트 = 'AI가 이미 무엇을 알고 있을까'",
+         size=16, color=ACCENT, bold=True, align=PP_ALIGN.CENTER)
 
-elements = [
-    "시스템 프롬프트", "사용자 프롬프트", "대화 이력", "장기 메모리",
-    "RAG", "도구 (MCP)", "출력 형식"
+# ════════════════════════════════════════════
+# 컨텍스트 엔지니어링 - 7요소 (분리된 슬라이드)
+# ════════════════════════════════════════════
+slide = prs.slides.add_slide(prs.slide_layouts[6])
+set_bg(slide, BG_DARK)
+
+add_text(slide, Inches(0.5), Inches(0.3), Inches(12), Inches(0.7),
+         "컨텍스트의 7요소", size=32, color=WHITE, bold=True)
+
+add_text(slide, Inches(0.5), Inches(1.1), Inches(12), Inches(0.5),
+         "AI에게 제공하는 정보를 7가지 층으로 설계합니다",
+         size=18, color=LIGHT_GRAY)
+
+elements_detail = [
+    ("시스템 프롬프트", "AI의 역할과 규칙 정의", "\"너는 고객 응대 전문가야\"", ACCENT),
+    ("사용자 프롬프트", "현재 과제/질문", "\"이 이메일에 답장 써줘\"", ACCENT2),
+    ("대화 이력", "지금까지의 맥락", "이전 대화 내용 참조", ACCENT3),
+    ("장기 메모리", "세션을 넘는 기억", "지난주 작업 결과 기억", N8N_COLOR),
+    ("검색된 정보 (RAG)", "필요한 문서·데이터", "사내 매뉴얼 검색 후 참조", ORANGE),
+    ("사용 가능한 도구", "API, MCP, 함수", "Slack 전송, DB 조회 가능", ACCENT),
+    ("출력 형식", "구조화된 응답 정의", "JSON, 표, 마크다운 등", YELLOW),
 ]
-for i, elem in enumerate(elements):
-    x = Inches(0.5 + i * 1.8)
-    add_shape(slide, x, Inches(5.8), Inches(1.6), Inches(0.8), BG_MID)
 
-    colors = [ACCENT, ACCENT2, ACCENT3, N8N_COLOR, ORANGE, ACCENT, YELLOW]
-    add_text(slide, x, Inches(5.85), Inches(1.6), Inches(0.7),
-             elem, size=12, color=colors[i], bold=True, align=PP_ALIGN.CENTER)
+for i, (name, desc, example, color) in enumerate(elements_detail):
+    row = i // 2
+    col = i % 2
+    x = Inches(0.5 + col * 6.3)
+    y = Inches(1.8 + row * 1.3)
 
-add_text(slide, Inches(0.5), Inches(6.8), Inches(12), Inches(0.4),
+    add_shape(slide, x, y, Inches(6.0), Inches(1.15), BG_MID)
+    bar = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, x, y, Inches(0.1), Inches(1.15))
+    bar.fill.solid()
+    bar.fill.fore_color.rgb = color
+    bar.line.fill.background()
+
+    add_text(slide, x + Inches(0.3), y + Inches(0.05), Inches(2.5), Inches(0.4),
+             name, size=16, color=color, bold=True)
+    add_text(slide, x + Inches(3.0), y + Inches(0.05), Inches(2.8), Inches(0.4),
+             desc, size=13, color=WHITE)
+    add_text(slide, x + Inches(0.3), y + Inches(0.55), Inches(5.5), Inches(0.4),
+             f"예: {example}", size=12, color=LIGHT_GRAY)
+
+add_text(slide, Inches(0.5), Inches(7.0), Inches(12), Inches(0.4),
          "핵심: 컨텍스트 엔지니어링 = 무엇을, 언제, 어떤 형식으로, 얼마나 가져올지 설계하는 상위 학문",
          size=14, color=ACCENT, bold=True, align=PP_ALIGN.CENTER)
 
 # ════════════════════════════════════════════
-# 슬라이드 10: 에이전틱 AI - 정의
+# 브릿지 슬라이드: 지금까지 → 에이전틱 AI
+# ════════════════════════════════════════════
+slide = prs.slides.add_slide(prs.slide_layouts[6])
+set_bg(slide, BG_DARK)
+
+add_text(slide, Inches(1), Inches(1.0), Inches(11), Inches(0.8),
+         "여기까지 정리하면...", size=36, color=WHITE, bold=True, align=PP_ALIGN.CENTER)
+
+bridge_items = [
+    ("모델은 충분히 똑똑해졌고", LIGHT_GRAY),
+    ("도구 연결 표준(MCP)도 만들어졌고", ACCENT),
+    ("코드도 직접 쓰게 됐고", ACCENT2),
+    ("컨텍스트 관리 방법도 진화했다", ACCENT3),
+]
+
+for i, (text, color) in enumerate(bridge_items):
+    y = Inches(2.3 + i * 0.9)
+    add_text(slide, Inches(2), y, Inches(9), Inches(0.6),
+             f"✓  {text}", size=22, color=color)
+
+add_text(slide, Inches(1), Inches(5.5), Inches(11), Inches(0.8),
+         "그렇다면 이 모든 것이 합쳐지면?", size=28, color=LIGHT_GRAY, align=PP_ALIGN.CENTER)
+
+add_text(slide, Inches(1), Inches(6.3), Inches(11), Inches(0.8),
+         "→  에이전틱 AI", size=40, color=ACCENT, bold=True, align=PP_ALIGN.CENTER)
+
+# ════════════════════════════════════════════
+# 에이전틱 AI - 정의
 # ════════════════════════════════════════════
 slide = prs.slides.add_slide(prs.slide_layouts[6])
 set_bg(slide, BG_DARK)
