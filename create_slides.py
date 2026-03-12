@@ -130,18 +130,20 @@ terms = [
     ("RAG", "Retrieval Augmented Generation", "AI가 외부 문서를 검색해서 답변에 활용하는 기술", N8N_COLOR),
     ("워크플로우", "Workflow", "업무 처리 흐름을 자동화한 것 (A→B→C 순서대로 실행)", ACCENT),
     ("오케스트레이션", "Orchestration", "여러 AI/도구를 지휘·조율하는 것 (지휘자 역할)", ACCENT2),
+    ("Fair-code", "Fair-code", "오픈소스와 유사하나 상업적 재배포에 제한을 둔 라이선스 모델", ACCENT3),
+    ("노코드/로우코드", "No-code/Low-code", "코드 없이 드래그 앤 드롭으로 소프트웨어를 만드는 방식", N8N_COLOR),
 ]
 
 for i, (term_kr, term_en, desc, color) in enumerate(terms):
     row = i // 2
     col = i % 2
     x = Inches(0.5 + col * 6.3)
-    y = Inches(1.6 + row * 1.35)
+    y = Inches(1.6 + row * 1.1)
 
-    add_shape(slide, x, y, Inches(6.0), Inches(1.2), BG_MID)
+    add_shape(slide, x, y, Inches(6.0), Inches(0.95), BG_MID)
 
     # 색상 왼쪽 바
-    bar = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, x, y, Inches(0.1), Inches(1.2))
+    bar = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, x, y, Inches(0.1), Inches(0.95))
     bar.fill.solid()
     bar.fill.fore_color.rgb = color
     bar.line.fill.background()
@@ -774,7 +776,50 @@ add_bullet_list(slide, Inches(0.5), Inches(5.5), Inches(12), Inches(1.5),
                 stats_items, size=15, color=ACCENT)
 
 # ════════════════════════════════════════════
-# 슬라이드 15: 채택 현실
+# 주요 에이전트 프레임워크 비교
+# ════════════════════════════════════════════
+slide = prs.slides.add_slide(prs.slide_layouts[6])
+set_bg(slide, BG_DARK)
+
+add_text(slide, Inches(0.5), Inches(0.3), Inches(12), Inches(0.7),
+         "주요 에이전트 프레임워크 비교", size=32, color=WHITE, bold=True)
+
+add_text(slide, Inches(0.5), Inches(1.1), Inches(12), Inches(0.4),
+         "에이전틱 AI를 구축하는 여러 도구들 — n8n은 어디에 위치할까?",
+         size=16, color=LIGHT_GRAY)
+
+frameworks = [
+    ("LangGraph", "코드(Python)\n그래프 상태 머신", "복잡한 커스텀 에이전트", "🔴 높음", ACCENT2),
+    ("CrewAI", "코드(Python)\n역할 기반 팀", "멀티에이전트 프로토타입", "🟡 중간", ACCENT3),
+    ("OpenAI Agents SDK", "코드(Python)\n최소주의", "OpenAI 생태계", "🟢 낮음", ACCENT),
+    ("Claude Agent SDK", "코드, MCP 네이티브", "Claude 기반 에이전트", "🟡 중간", YELLOW),
+    ("n8n", "시각적 노코드/로우코드\n드래그 앤 드롭", "비즈니스 팀 + 개발팀", "🟢 낮음 ⭐", N8N_COLOR),
+]
+
+for i, (name, approach, target, difficulty, color) in enumerate(frameworks):
+    y = Inches(1.8 + i * 1.05)
+    add_shape(slide, Inches(0.5), y, Inches(12), Inches(0.9), BG_MID)
+
+    bar = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0.5), y, Inches(0.1), Inches(0.9))
+    bar.fill.solid()
+    bar.fill.fore_color.rgb = color
+    bar.line.fill.background()
+
+    add_text(slide, Inches(0.9), y + Inches(0.15), Inches(2.5), Inches(0.5),
+             name, size=18, color=color, bold=True)
+    add_text(slide, Inches(3.5), y + Inches(0.15), Inches(3.5), Inches(0.5),
+             approach, size=13, color=WHITE)
+    add_text(slide, Inches(7.2), y + Inches(0.15), Inches(2.8), Inches(0.5),
+             target, size=13, color=LIGHT_GRAY)
+    add_text(slide, Inches(10.2), y + Inches(0.15), Inches(2.3), Inches(0.5),
+             difficulty, size=14, color=color, bold=True)
+
+add_text(slide, Inches(0.5), Inches(7.0), Inches(12), Inches(0.4),
+         "n8n = 코드 프레임워크의 유연성과 노코드의 접근성을 동시에 제공",
+         size=16, color=N8N_COLOR, bold=True, align=PP_ALIGN.CENTER)
+
+# ════════════════════════════════════════════
+# 채택 현실
 # ════════════════════════════════════════════
 slide = prs.slides.add_slide(prs.slide_layouts[6])
 set_bg(slide, BG_DARK)
@@ -1006,9 +1051,9 @@ add_text(slide, Inches(0.5), Inches(5.3), Inches(12), Inches(0.5),
          "실제 워크플로우 예시", size=20, color=WHITE, bold=True)
 
 examples = [
-    ("고객 문의 에이전트", "이메일 수신 → AI 분류 → 자동 답변/에스컬레이션", ACCENT),
-    ("리서치 에이전트", "스케줄 → 웹 검색 → RAG 비교 → 리포트 → Slack 공유", ACCENT3),
-    ("DevOps 인시던트", "알림 → 로그 분석 → 원인 추론 → 자동 대응/호출", ORANGE),
+    ("고객 문의 자동응대", "이메일 수신 → AI 분류(시승/AS/견적) → CRM 조회 → 자동 처리", ACCENT),
+    ("시장 인텔리전스", "주간 스케줄 → 경쟁사 가격/프로모션 수집 → 동향 리포트 → Slack", ACCENT3),
+    ("예측 정비 알림", "센서 데이터 → 이상 패턴 분석 → 고객 사전 알림 → 서비스 예약", ORANGE),
 ]
 
 for i, (name, flow, color) in enumerate(examples):
@@ -1025,14 +1070,14 @@ slide = prs.slides.add_slide(prs.slide_layouts[6])
 set_bg(slide, BG_DARK)
 
 add_text(slide, Inches(0.5), Inches(0.3), Inches(12), Inches(0.7),
-         "n8n 실제 도입 사례", size=32, color=WHITE, bold=True)
+         "자동차 업계 AI + n8n 도입 사례", size=32, color=WHITE, bold=True)
 
 cases = [
-    ("Delivery Hero", "운영 자동화", "월 200시간 절약", ACCENT),
-    ("BeGlobal", "AI 맞춤 제안서 생성", "10배 확장, 1분 이내", ACCENT3),
-    ("System", "AI 데이터 입력 자동화", "처리 시간 97% 감소", ORANGE),
-    ("XIBIX", "HR 질문 AI 워크플로우", "HR 문의 50% 감소", ACCENT2),
-    ("Flow AI", "부동산 음성 AI 아웃리치", "수동 후속 완전 자동화", N8N_COLOR),
+    ("Mercedes-Benz", "MBUX AI 에이전트 (차량 내 음성+제스처)", "멀티모달 에이전트 상용화", ACCENT),
+    ("BMW", "딜러 고객 응대 자동화 + Neue Klasse AI", "CS 처리 시간 단축", ACCENT3),
+    ("Volvo", "예측 정비 AI — 센서 데이터 자동 분석", "사전 정비율 향상", ORANGE),
+    ("Delivery Hero", "운영 자동화 워크플로우 (n8n)", "월 200시간 절약", ACCENT2),
+    ("BeGlobal", "AI 맞춤 제안서 생성 (n8n)", "10배 확장, 1분 이내", N8N_COLOR),
 ]
 
 for i, (company, usecase, result, color) in enumerate(cases):
@@ -1205,6 +1250,28 @@ add_text(slide, Inches(1), Inches(2.5), Inches(11), Inches(1),
 
 add_text(slide, Inches(1), Inches(4.0), Inches(11), Inches(0.5),
          "감사합니다", size=24, color=ACCENT, align=PP_ALIGN.CENTER)
+
+# ── 발표자 노트 추가 ──
+speaker_notes = {
+    0: "인사 후 제목 소개. '오늘은 최근 급변한 AI 트렌드를 정리하고, 우리 팀이 활용할 수 있는 구체적인 방안을 공유하겠습니다.'",
+    1: "질문 던지고 2-3초 침묵. 청중의 주의를 환기시킨 후 '실제로 지난 1년간 정말 많은 변화가 있었습니다' 로 연결.",
+    2: "용어 슬라이드. '발표에 전문 용어가 많이 나옵니다. 핵심만 빠르게 짚고 가겠습니다. 모르는 용어 나오면 언제든 질문해 주세요.'",
+    3: "타임라인. '이 타임라인에서 주목할 점은 — 변화의 속도입니다. 2024년 말부터 불과 1년 사이에 이 모든 일이 일어났습니다.'",
+    6: "MCP 개요. 'USB-C 비유로 설명. 예전에는 각 기기마다 다른 충전기가 필요했듯이, AI도 각 서비스마다 별도 연결이 필요했습니다. MCP는 이걸 하나로 통일한 겁니다.'",
+    7: "MCP 한계. '그런데 재미있는 건, 표준이 만들어지자마자 각 서비스들이 자체 AI를 내장하기 시작했다는 겁니다. 마치 USB-C가 보급되는데 무선 충전이 더 편해진 느낌.'",
+}
+
+# 브릿지 슬라이드 (용어+타임라인 등 앞 슬라이드 수에 따라 인덱스 조정)
+# 에이전틱 AI 정의, n8n 소개, 마무리 등
+total = len(prs.slides)
+speaker_notes[total - 7] = "'성공 보장은 없지만, 시도 자체가 학습입니다. 특히 우리 같은 수입차 업계에서 고객 응대, 예측 정비, 시장 분석 분야에서 충분히 시도해볼 가치가 있습니다.'"
+speaker_notes[total - 3] = "'에이전틱 AI의 핵심은 결국 오케스트레이션 — 여러 도구와 AI를 얼마나 잘 조합하느냐입니다. n8n은 그 진입 문턱을 가장 낮춰주는 플랫폼입니다.'"
+speaker_notes[total - 1] = "'감사합니다. 궁금한 점이나 우리 업무에 적용해보고 싶은 아이디어가 있으시면 자유롭게 말씀해 주세요.'"
+
+for idx, note in speaker_notes.items():
+    if 0 <= idx < len(prs.slides):
+        notes_slide = prs.slides[idx].notes_slide
+        notes_slide.notes_text_frame.text = note
 
 # ── 저장 ──
 output = "/Users/mung/git/ppt-maker/AI_트렌드_2025-2026.pptx"
