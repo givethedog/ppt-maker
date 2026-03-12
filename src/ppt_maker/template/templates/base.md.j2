@@ -1,0 +1,43 @@
+---
+title: "{{ topic }}"
+{% if subtitle %}subtitle: "{{ subtitle }}"{% endif %}
+{% if author %}author: "{{ author }}"{% endif %}
+{% if date %}date: "{{ date }}"{% endif %}
+---
+
+# {{ topic }}
+
+{% if subtitle %}
+> {{ subtitle }}
+{% endif %}
+
+<!-- slide: type=title -->
+
+---
+
+{% for section in sections %}
+## {{ section.title }}
+
+{% if section.slide_type and section.slide_type != "auto" %}
+<!-- slide: type={{ section.slide_type }}{% if section.conversion_strategy and section.conversion_strategy != "auto" %}, strategy={{ section.conversion_strategy }}{% endif %} -->
+{% endif %}
+
+{% if section.content %}
+{{ section.content }}
+{% else %}
+*이 섹션의 내용은 리서치 단계에서 채워집니다.*
+{% endif %}
+
+---
+
+{% endfor %}
+
+## 요약
+
+본 보고서에서는 **{{ topic }}**에 대해 {{ sections | length }}개 섹션으로 나누어 분석하였습니다.
+
+{% for section in sections %}
+- **{{ section.title }}**
+{% endfor %}
+
+<!-- slide: type=content -->

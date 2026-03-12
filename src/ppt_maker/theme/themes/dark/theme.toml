@@ -1,0 +1,21 @@
+[meta]
+name = "dark"
+description = "어두운 배경 테마 (create_slides.py 스타일)"
+
+[colors]
+bg_primary = "#1A1A2E"
+bg_secondary = "#16213E"
+accent = "#00D2FF"
+accent2 = "#7C3AED"
+accent3 = "#10B981"
+text_primary = "#FFFFFF"
+text_secondary = "#A0A0B0"
+
+[fonts]
+heading = "Apple SD Gothic Neo"
+body = "Apple SD Gothic Neo"
+fallback = ["Noto Sans KR", "Malgun Gothic", "sans-serif"]
+
+[slide]
+width = 13.333
+height = 7.5

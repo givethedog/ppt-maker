@@ -1,0 +1,17 @@
+topic = "클라우드 네이티브 전환 전략"
+subtitle = "수입차 브랜드 IT 인프라 현대화"
+author = "IT팀"
+theme = "default"
+output_dir = "./output"
+
+[[sections]]
+title = "현재 인프라 현황"
+content = "온프레미스 중심 레거시 시스템 분석"
+
+[[sections]]
+title = "클라우드 전환 로드맵"
+slide_type = "timeline"
+
+[[sections]]
+title = "비용 분석"
+slide_type = "table"

@@ -1,0 +1,21 @@
+[meta]
+name = "default"
+description = "밝은 배경 기본 테마"
+
+[colors]
+bg_primary = "#FAFAFC"
+bg_secondary = "#F0F0F5"
+accent = "#0066FF"
+accent2 = "#7C3AED"
+accent3 = "#10B981"
+text_primary = "#1A1A2E"
+text_secondary = "#6B7080"
+
+[fonts]
+heading = "Apple SD Gothic Neo"
+body = "Apple SD Gothic Neo"
+fallback = ["Noto Sans KR", "Malgun Gothic", "sans-serif"]
+
+[slide]
+width = 13.333
+height = 7.5
