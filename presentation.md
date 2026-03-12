@@ -50,7 +50,7 @@
 | 2025.10 | **n8n Series C** $180M (Nvidia 참여) | 워크플로우 자동화 + AI의 결합에 큰 베팅 |
 | 2025.12 | MCP → **Linux Foundation 기증** | 표준은 확립, 그러나 이미 다음 단계로 |
 | 2026.01 | **오픈클로** 바이럴 (25만 스타) | 바이브 코딩의 정점과 논란 |
-| 2026.02 | **Claude 4.6** / Karpathy "바이브 코딩은 passé" | 에이전틱 엔지니어링 시대로 전환 |
+| 2026.02 | **Claude 4.6** / Karpathy "바이브 코딩은 이제 지나간 것" | 에이전틱 엔지니어링 시대로 전환 |
 
 **한 줄 요약:** AI가 "대화 도구"에서 → "일을 하는 에이전트"로 → "시스템을 운영하는 팀"으로 진화 중
 
@@ -494,6 +494,32 @@ GitHub, Slack, DB  ─────→  MCP Client 노드로 소비
 
 ---
 
+## 7-9. 사내 시스템 연동: API가 핵심
+
+> 에이전틱 AI가 실제로 작동하려면, 사내 시스템이 API로 접근 가능해야 합니다.
+
+```
+[사용자 요청] → [n8n 에이전트] → [API Gateway] → [사내 시스템]
+                                                 ├── DMS (딜러 관리)
+                                                 ├── CRM (고객 관리)
+                                                 ├── ERP (재고/회계)
+                                                 └── 서비스 예약 시스템
+```
+
+**현재 상태:**
+- 많은 사내 시스템이 API 미제공 또는 제한적
+- 데이터가 사일로(Silo)에 갇혀 있음
+- 수동 데이터 추출/입력에 의존
+
+**필요 액션:**
+- 주요 시스템 API 개발/개방
+- API Gateway 표준화
+- 데이터 흐름 설계 (n8n으로 연결)
+
+**핵심 메시지:** AI 에이전트의 성공 = API 인프라의 성숙도
+
+---
+
 ## 8. 결론: 우리가 지금 할 수 있는 것
 
 ### 전체 흐름 요약
@@ -561,6 +587,13 @@ GitHub, Slack, DB  ─────→  MCP Client 노드로 소비
 
 ### 바이브 코딩 & CLI
 - [Vibe Coding](https://en.wikipedia.org/wiki/Vibe_coding) | [OpenClaw](https://en.wikipedia.org/wiki/OpenClaw) | [Claude Code vs Cursor](https://www.builder.io/blog/cursor-vs-claude-code)
+
+### 자동차 업계 AI 동향
+- Mercedes-Benz MBUX AI: https://www.mercedes-benz.com/en/innovation/mbux/
+- BMW AI & Digital: https://www.bmwgroup.com/en/innovation/digitalization.html
+- Volvo Cars Tech: https://www.volvocars.com/intl/v/connectivity/
+- Automotive AI Market Report — McKinsey: https://www.mckinsey.com/industries/automotive-and-assembly/our-insights
+- Gartner Automotive AI Predictions: https://www.gartner.com/en/industries/automotive
 
 ---
 

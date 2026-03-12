@@ -19,6 +19,17 @@ ORANGE = RGBColor(0xFF, 0x6B, 0x35)
 YELLOW = RGBColor(0xFF, 0xD6, 0x00)
 N8N_COLOR = RGBColor(0xEA, 0x4B, 0x71)    # n8n 브랜드
 
+# ── 브랜드 컬러 ──
+OPENAI_BLACK = RGBColor(0x00, 0x00, 0x00)
+ANTHROPIC_BROWN = RGBColor(0xD4, 0xA5, 0x74)
+GOOGLE_BLUE = RGBColor(0x42, 0x85, 0xF4)
+OPENSOURCE_ORANGE = RGBColor(0xFF, 0x66, 0x00)
+CHALLENGER_PURPLE = RGBColor(0x8B, 0x5C, 0xF6)
+LANGGRAPH_COLOR = RGBColor(0x7C, 0x3A, 0xED)
+CREWAI_COLOR = RGBColor(0x10, 0xB9, 0x81)
+OPENAI_SDK_COLOR = RGBColor(0x00, 0xD2, 0xFF)
+CLAUDE_SDK_COLOR = RGBColor(0xFF, 0xD6, 0x00)
+
 prs = Presentation()
 prs.slide_width = Inches(13.333)
 prs.slide_height = Inches(7.5)
@@ -72,6 +83,29 @@ def add_bullet_list(slide, left, top, width, height, items, size=16, color=WHITE
         p.font.name = "Apple SD Gothic Neo"
         p.space_after = spacing
     return txBox
+
+
+def add_brand_circle(slide, left, top, size, bg_color, text, text_color=WHITE, font_size=12):
+    """브랜드 컬러 원형 + 이니셜 텍스트로 시각적 로고 표현"""
+    circle = slide.shapes.add_shape(MSO_SHAPE.OVAL, left, top, size, size)
+    circle.fill.solid()
+    circle.fill.fore_color.rgb = bg_color
+    circle.line.fill.background()
+    circle.shadow.inherit = False
+    # 원 안에 텍스트
+    tf = circle.text_frame
+    tf.word_wrap = False
+    p = tf.paragraphs[0]
+    p.text = text
+    p.font.size = Pt(font_size)
+    p.font.color.rgb = text_color
+    p.font.bold = True
+    p.font.name = "Apple SD Gothic Neo"
+    p.alignment = PP_ALIGN.CENTER
+    tf.paragraphs[0].space_before = Pt(0)
+    tf.paragraphs[0].space_after = Pt(0)
+    tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+    return circle
 
 
 # ════════════════════════════════════════════
@@ -211,14 +245,14 @@ add_text(slide, Inches(0.5), Inches(0.3), Inches(12), Inches(0.7),
          "LLM 모델 경쟁: 5파전", size=32, color=WHITE, bold=True)
 
 players = [
-    ("OpenAI", "GPT-4.1, o3, o4-mini", "추론 특화, 1M 토큰", ACCENT3),
-    ("Anthropic", "Claude 4.6", "코딩 1위, 30h+ 자율 에이전트", ACCENT),
-    ("Google", "Gemini 2.5 Pro", "1M 토큰, Deep Think", YELLOW),
-    ("오픈소스", "DeepSeek, Llama 4", "가격 파괴, 10M 토큰", ORANGE),
-    ("챌린저", "Grok 3, Mistral", "인프라 + EU 데이터 주권", ACCENT2),
+    ("OpenAI", "GPT-4.1, o3, o4-mini", "추론 특화, 1M 토큰", ACCENT3, OPENAI_BLACK, "AI", WHITE),
+    ("Anthropic", "Claude 4.6", "코딩 1위, 30h+ 자율 에이전트", ACCENT, ANTHROPIC_BROWN, "A", WHITE),
+    ("Google", "Gemini 2.5 Pro", "1M 토큰, Deep Think", YELLOW, GOOGLE_BLUE, "G", WHITE),
+    ("오픈소스", "DeepSeek, Llama 4", "가격 파괴, 10M 토큰", ORANGE, OPENSOURCE_ORANGE, "OS", WHITE),
+    ("챌린저", "Grok 3, Mistral", "인프라 + EU 데이터 주권", ACCENT2, CHALLENGER_PURPLE, "X", WHITE),
 ]
 
-for i, (name, models, strength, color) in enumerate(players):
+for i, (name, models, strength, color, brand_bg, brand_text, brand_text_color) in enumerate(players):
     y = Inches(1.3 + i * 1.15)
     card = add_shape(slide, Inches(0.5), y, Inches(12), Inches(1.0), BG_MID)
 
@@ -228,11 +262,14 @@ for i, (name, models, strength, color) in enumerate(players):
     bar.fill.fore_color.rgb = color
     bar.line.fill.background()
 
-    add_text(slide, Inches(0.9), y + Inches(0.1), Inches(2), Inches(0.5),
+    # 브랜드 컬러 원형 아이콘
+    add_brand_circle(slide, Inches(0.8), y + Inches(0.15), Inches(0.7), brand_bg, brand_text, brand_text_color, font_size=14)
+
+    add_text(slide, Inches(1.7), y + Inches(0.1), Inches(2), Inches(0.5),
              name, size=20, color=color, bold=True)
-    add_text(slide, Inches(3.2), y + Inches(0.1), Inches(3.5), Inches(0.5),
+    add_text(slide, Inches(3.8), y + Inches(0.1), Inches(3.5), Inches(0.5),
              models, size=16, color=WHITE)
-    add_text(slide, Inches(7), y + Inches(0.1), Inches(5.5), Inches(0.5),
+    add_text(slide, Inches(7.5), y + Inches(0.1), Inches(5), Inches(0.5),
              strength, size=16, color=LIGHT_GRAY)
 
 # 하단
@@ -452,7 +489,7 @@ add_shape(slide, Inches(7), Inches(4.5), Inches(5.8), Inches(2.5), BG_MID)
 add_text(slide, Inches(7.3), Inches(4.6), Inches(5.2), Inches(0.5),
          '에이전틱 엔지니어링 (2026)', size=18, color=ACCENT3, bold=True)
 add_text(slide, Inches(7.3), Inches(5.1), Inches(5.2), Inches(0.8),
-         '"바이브 코딩은 passé" — Karpathy\n→ AI가 코드를 쓰되, 사람이 감독·조율\n→ 품질과 보안도 중요',
+         '"바이브 코딩은 이제 지나간 것" — Karpathy\n→ AI가 코드를 쓰되, 사람이 감독·조율\n→ 품질과 보안도 중요',
          size=14, color=LIGHT_GRAY)
 
 add_text(slide, Inches(6.2), Inches(5.3), Inches(0.6), Inches(0.5),
@@ -789,37 +826,46 @@ add_text(slide, Inches(0.5), Inches(1.1), Inches(12), Inches(0.4),
          size=16, color=LIGHT_GRAY)
 
 frameworks = [
-    ("LangGraph", "코드(Python)\n그래프 상태 머신", "복잡한 커스텀 에이전트", "🔴 높음", ACCENT2),
-    ("CrewAI", "코드(Python)\n역할 기반 팀", "멀티에이전트 프로토타입", "🟡 중간", ACCENT3),
-    ("OpenAI Agents SDK", "코드(Python)\n최소주의", "OpenAI 생태계", "🟢 낮음", ACCENT),
-    ("Claude Agent SDK", "코드, MCP 네이티브", "Claude 기반 에이전트", "🟡 중간", YELLOW),
-    ("n8n", "시각적 노코드/로우코드\n드래그 앤 드롭", "비즈니스 팀 + 개발팀", "🟢 낮음 ⭐", N8N_COLOR),
+    ("LangGraph", "코드(Python), 그래프 상태 머신", "복잡한 커스텀 에이전트", "🔴 높음", LANGGRAPH_COLOR, "LG"),
+    ("CrewAI", "코드(Python), 역할 기반 팀", "멀티에이전트 프로토타입", "🟡 중간", CREWAI_COLOR, "CR"),
+    ("OpenAI SDK", "코드(Python), 최소주의", "OpenAI 생태계", "🟢 낮음", OPENAI_SDK_COLOR, "OA"),
+    ("Claude SDK", "코드, MCP 네이티브", "Claude 기반 에이전트", "🟡 중간", CLAUDE_SDK_COLOR, "CL"),
+    ("n8n", "시각적 노코드/로우코드", "비즈니스 팀 + 개발팀", "🟢 낮음 ⭐", N8N_COLOR, "n8n"),
 ]
 
-for i, (name, approach, target, difficulty, color) in enumerate(frameworks):
-    y = Inches(1.8 + i * 1.05)
-    add_shape(slide, Inches(0.5), y, Inches(12), Inches(0.9), BG_MID)
+for i, (name, approach, target, difficulty, color, icon_text) in enumerate(frameworks):
+    y = Inches(1.6 + i * 0.85)
+    add_shape(slide, Inches(0.5), y, Inches(12), Inches(0.75), BG_MID)
 
-    bar = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0.5), y, Inches(0.1), Inches(0.9))
+    bar = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0.5), y, Inches(0.1), Inches(0.75))
     bar.fill.solid()
     bar.fill.fore_color.rgb = color
     bar.line.fill.background()
 
-    add_text(slide, Inches(0.9), y + Inches(0.15), Inches(2.5), Inches(0.5),
-             name, size=18, color=color, bold=True)
-    add_text(slide, Inches(3.5), y + Inches(0.15), Inches(3.5), Inches(0.5),
+    # 프레임워크별 컬러 아이콘
+    add_brand_circle(slide, Inches(0.75), y + Inches(0.1), Inches(0.55), color, icon_text, WHITE, font_size=10)
+
+    add_text(slide, Inches(1.5), y + Inches(0.1), Inches(2), Inches(0.5),
+             name, size=17, color=color, bold=True)
+    add_text(slide, Inches(3.5), y + Inches(0.1), Inches(3.5), Inches(0.5),
              approach, size=13, color=WHITE)
-    add_text(slide, Inches(7.2), y + Inches(0.15), Inches(2.8), Inches(0.5),
+    add_text(slide, Inches(7.2), y + Inches(0.1), Inches(2.5), Inches(0.5),
              target, size=13, color=LIGHT_GRAY)
-    add_text(slide, Inches(10.2), y + Inches(0.15), Inches(2.3), Inches(0.5),
+    add_text(slide, Inches(9.8), y + Inches(0.1), Inches(2.7), Inches(0.5),
              difficulty, size=14, color=color, bold=True)
 
-add_text(slide, Inches(0.5), Inches(7.0), Inches(12), Inches(0.4),
-         "n8n = 코드 프레임워크의 유연성과 노코드의 접근성을 동시에 제공",
-         size=16, color=N8N_COLOR, bold=True, align=PP_ALIGN.CENTER)
+# 우리 팀 상황에서의 n8n 강점
+add_shape(slide, Inches(0.5), Inches(5.9), Inches(12), Inches(1.5), BG_MID)
+add_text(slide, Inches(0.8), Inches(5.95), Inches(11), Inches(0.4),
+         "우리 팀(수입차 업계 IT)에서 n8n이 적합한 이유", size=16, color=N8N_COLOR, bold=True)
+n8n_fit_items = [
+    "Self-hosted로 고객/딜러 데이터 보호  |  비개발자도 워크플로우 수정 가능  |  500+ 앱 연동 (Slack, 이메일, CRM)  |  Self-hosted 무료 vs SaaS 월 수백달러",
+]
+add_bullet_list(slide, Inches(0.8), Inches(6.35), Inches(11.5), Inches(0.7),
+                n8n_fit_items, size=13, color=WHITE)
 
 # ════════════════════════════════════════════
-# 채택 현실
+# 채택 현실 (개선: 11% 강조 + 5가지 조건)
 # ════════════════════════════════════════════
 slide = prs.slides.add_slide(prs.slide_layouts[6])
 set_bg(slide, BG_DARK)
@@ -827,32 +873,62 @@ set_bg(slide, BG_DARK)
 add_text(slide, Inches(0.5), Inches(0.3), Inches(12), Inches(0.7),
          "에이전틱 AI 채택 현실", size=32, color=WHITE, bold=True)
 
+# 왼쪽: 11% 큰 숫자 강조
+add_shape(slide, Inches(0.5), Inches(1.2), Inches(4.5), Inches(3.0), BG_MID)
+add_text(slide, Inches(0.5), Inches(1.4), Inches(4.5), Inches(1.2),
+         "11%", size=72, color=ORANGE, bold=True, align=PP_ALIGN.CENTER)
+add_text(slide, Inches(0.5), Inches(2.6), Inches(4.5), Inches(0.5),
+         "만이 실제 운영에 도달", size=20, color=WHITE, align=PP_ALIGN.CENTER)
+add_text(slide, Inches(0.5), Inches(3.2), Inches(4.5), Inches(0.5),
+         "(Deloitte 2026 조사)", size=14, color=LIGHT_GRAY, align=PP_ALIGN.CENTER)
+add_text(slide, Inches(0.5), Inches(3.7), Inches(4.5), Inches(0.4),
+         "89%는 왜 실운영에 도달하지 못하는가?", size=15, color=ORANGE, bold=True, align=PP_ALIGN.CENTER)
+
+# 오른쪽: 막대 차트
 adoption = [
-    ("탐색 중", "30%", 3.0, LIGHT_GRAY),
-    ("파일럿", "38%", 3.8, ACCENT2),
-    ("배포 준비", "14%", 1.4, ACCENT),
-    ("실제 운영", "11%", 1.1, ACCENT3),
+    ("탐색 중", "30%", 2.4, LIGHT_GRAY),
+    ("파일럿", "38%", 3.0, ACCENT2),
+    ("배포 준비", "14%", 1.1, ACCENT),
+    ("실제 운영", "11%", 0.9, ORANGE),
 ]
-
 for i, (label, pct, width_val, color) in enumerate(adoption):
-    y = Inches(1.5 + i * 1.1)
-    add_text(slide, Inches(0.5), y + Inches(0.05), Inches(2), Inches(0.5),
-             label, size=18, color=WHITE)
-
+    y = Inches(1.3 + i * 0.85)
+    add_text(slide, Inches(5.3), y + Inches(0.05), Inches(1.8), Inches(0.4),
+             label, size=15, color=WHITE)
     bar = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE,
-                                  Inches(2.8), y, Inches(width_val), Inches(0.7))
+                                  Inches(7.2), y, Inches(width_val), Inches(0.55))
     bar.fill.solid()
     bar.fill.fore_color.rgb = color
     bar.line.fill.background()
+    add_text(slide, Inches(7.2) + Inches(width_val) + Inches(0.15), y + Inches(0.05),
+             Inches(1), Inches(0.4), pct, size=16, color=color, bold=True)
 
-    add_text(slide, Inches(2.8) + Inches(width_val) + Inches(0.2), y + Inches(0.05),
-             Inches(1.5), Inches(0.5), pct, size=20, color=color, bold=True)
+# 하단: 실운영 도달 5가지 조건
+add_text(slide, Inches(0.5), Inches(4.5), Inches(12), Inches(0.4),
+         "실운영 도달을 위한 5가지 조건", size=18, color=WHITE, bold=True)
 
-add_text(slide, Inches(0.5), Inches(5.5), Inches(12), Inches(1),
-         "Gartner: 2026년 말까지 엔터프라이즈 앱 40%에 AI 에이전트 내장\n"
-         "하지만 40%+ 프로젝트가 레거시 호환 문제로 실패 예측\n"
-         "핵심 병목: AI 자체가 아니라 데이터 엔지니어링, 거버넌스, 레거시 통합",
-         size=16, color=LIGHT_GRAY)
+conditions = [
+    ("1", "데이터 파이프라인 정비", ACCENT, True),
+    ("2", "거버넌스/보안 프레임워크", ACCENT2, True),
+    ("3", "레거시 시스템 API 연동", ACCENT3, True),
+    ("4", "조직 내 AI 리터러시", YELLOW, False),
+    ("5", "점진적 도입 (파일럿 -> 확대)", ORANGE, False),
+]
+for i, (num, cond_text, color, n8n_helps) in enumerate(conditions):
+    x = Inches(0.5 + i * 2.5)
+    y = Inches(5.1)
+    add_shape(slide, x, y, Inches(2.3), Inches(1.1), BG_MID)
+    add_text(slide, x, y + Inches(0.05), Inches(2.3), Inches(0.4),
+             num, size=22, color=color, bold=True, align=PP_ALIGN.CENTER)
+    add_text(slide, x + Inches(0.1), y + Inches(0.45), Inches(2.1), Inches(0.55),
+             cond_text, size=12, color=WHITE, align=PP_ALIGN.CENTER)
+    if n8n_helps:
+        add_text(slide, x, y + Inches(0.9), Inches(2.3), Inches(0.3),
+                 "n8n 지원", size=10, color=N8N_COLOR, bold=True, align=PP_ALIGN.CENTER)
+
+add_text(slide, Inches(0.5), Inches(6.5), Inches(12), Inches(0.5),
+         "n8n은 데이터 연결, API 연동, 점진적 도입을 직접 지원 -- 실운영 도달의 핵심 조력자",
+         size=14, color=N8N_COLOR, bold=True, align=PP_ALIGN.CENTER)
 
 # ════════════════════════════════════════════
 # 슬라이드 16: n8n 소개
@@ -862,6 +938,9 @@ set_bg(slide, BG_DARK)
 
 add_text(slide, Inches(0.5), Inches(0.3), Inches(12), Inches(0.7),
          "n8n: 에이전틱 AI를 실현하는 플랫폼", size=32, color=N8N_COLOR, bold=True)
+
+# n8n 브랜드 컬러 큰 원형 아이콘
+add_brand_circle(slide, Inches(10.8), Inches(0.15), Inches(0.9), N8N_COLOR, "n8n", WHITE, font_size=16)
 
 # n8n 소개 카드
 info_items = [
@@ -1140,7 +1219,89 @@ add_text(slide, Inches(0.5), Inches(6.2), Inches(12), Inches(0.5),
          size=18, color=N8N_COLOR, bold=True, align=PP_ALIGN.CENTER)
 
 # ════════════════════════════════════════════
-# 슬라이드 22: 전체 흐름 요약
+# 신규 슬라이드: 사내 시스템 연동 - API가 핵심
+# ════════════════════════════════════════════
+slide = prs.slides.add_slide(prs.slide_layouts[6])
+set_bg(slide, BG_DARK)
+
+add_text(slide, Inches(0.5), Inches(0.3), Inches(12), Inches(0.7),
+         "사내 시스템 연동: API가 핵심", size=32, color=WHITE, bold=True)
+
+add_text(slide, Inches(0.5), Inches(1.1), Inches(12), Inches(0.5),
+         "에이전틱 AI가 실제로 작동하려면, 사내 시스템이 API로 접근 가능해야 합니다",
+         size=17, color=LIGHT_GRAY)
+
+# 다이어그램: 흐름도를 도형으로 표현
+# [사용자 요청]
+add_shape(slide, Inches(0.5), Inches(2.3), Inches(2.0), Inches(0.8), ACCENT2)
+add_text(slide, Inches(0.5), Inches(2.4), Inches(2.0), Inches(0.6),
+         "사용자 요청", size=15, color=WHITE, bold=True, align=PP_ALIGN.CENTER)
+
+add_text(slide, Inches(2.5), Inches(2.45), Inches(0.5), Inches(0.5),
+         "->", size=20, color=ACCENT, bold=True, align=PP_ALIGN.CENTER)
+
+# [n8n 에이전트]
+add_shape(slide, Inches(3.0), Inches(2.3), Inches(2.2), Inches(0.8), N8N_COLOR)
+add_text(slide, Inches(3.0), Inches(2.4), Inches(2.2), Inches(0.6),
+         "n8n 에이전트", size=15, color=WHITE, bold=True, align=PP_ALIGN.CENTER)
+
+add_text(slide, Inches(5.2), Inches(2.45), Inches(0.5), Inches(0.5),
+         "->", size=20, color=ACCENT, bold=True, align=PP_ALIGN.CENTER)
+
+# [API Gateway]
+add_shape(slide, Inches(5.7), Inches(2.3), Inches(2.0), Inches(0.8), ACCENT)
+add_text(slide, Inches(5.7), Inches(2.4), Inches(2.0), Inches(0.6),
+         "API Gateway", size=15, color=WHITE, bold=True, align=PP_ALIGN.CENTER)
+
+add_text(slide, Inches(7.7), Inches(2.45), Inches(0.5), Inches(0.5),
+         "->", size=20, color=ACCENT, bold=True, align=PP_ALIGN.CENTER)
+
+# 사내 시스템들
+internal_systems = [
+    ("DMS (딜러 관리)", ACCENT3),
+    ("CRM (고객 관리)", ACCENT2),
+    ("ERP (재고/회계)", ORANGE),
+    ("서비스 예약 시스템", YELLOW),
+]
+for i, (sys_name, sys_color) in enumerate(internal_systems):
+    y = Inches(1.8 + i * 0.7)
+    add_shape(slide, Inches(8.3), y, Inches(4.2), Inches(0.6), BG_MID)
+    bar = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(8.3), y, Inches(0.08), Inches(0.6))
+    bar.fill.solid()
+    bar.fill.fore_color.rgb = sys_color
+    bar.line.fill.background()
+    add_text(slide, Inches(8.6), y + Inches(0.05), Inches(3.8), Inches(0.4),
+             sys_name, size=14, color=WHITE)
+
+# 현재 상태 & 필요 액션
+add_shape(slide, Inches(0.5), Inches(4.5), Inches(5.8), Inches(2.0), BG_MID)
+add_text(slide, Inches(0.8), Inches(4.6), Inches(5.2), Inches(0.4),
+         "현재 상태", size=18, color=ORANGE, bold=True)
+current_items = [
+    "많은 사내 시스템이 API 미제공 또는 제한적",
+    "데이터가 사일로(Silo)에 갇혀 있음",
+    "수동 데이터 추출/입력에 의존",
+]
+add_bullet_list(slide, Inches(0.8), Inches(5.1), Inches(5.2), Inches(1.2),
+                current_items, size=14, color=LIGHT_GRAY)
+
+add_shape(slide, Inches(7), Inches(4.5), Inches(5.8), Inches(2.0), BG_MID)
+add_text(slide, Inches(7.3), Inches(4.6), Inches(5.2), Inches(0.4),
+         "필요 액션", size=18, color=ACCENT3, bold=True)
+action_items = [
+    "주요 시스템 API 개발/개방",
+    "API Gateway 표준화",
+    "데이터 흐름 설계 (n8n으로 연결)",
+]
+add_bullet_list(slide, Inches(7.3), Inches(5.1), Inches(5.2), Inches(1.2),
+                action_items, size=14, color=WHITE)
+
+add_text(slide, Inches(0.5), Inches(6.8), Inches(12), Inches(0.5),
+         "AI 에이전트의 성공 = API 인프라의 성숙도",
+         size=20, color=ACCENT, bold=True, align=PP_ALIGN.CENTER)
+
+# ════════════════════════════════════════════
+# 슬라이드: 전체 흐름 요약
 # ════════════════════════════════════════════
 slide = prs.slides.add_slide(prs.slide_layouts[6])
 set_bg(slide, BG_DARK)
