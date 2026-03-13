@@ -95,7 +95,8 @@ class TopicConfig:
 
         project = data.get("project", data)
 
-        sections_raw = project.pop("sections", [])
+        # [[sections]]는 TOML 최상위에 위치할 수 있으므로 양쪽 모두 확인
+        sections_raw = project.pop("sections", []) or data.pop("sections", [])
         sections = [
             SectionConfig(**s) if isinstance(s, dict) else s
             for s in sections_raw

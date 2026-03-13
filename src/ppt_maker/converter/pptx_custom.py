@@ -594,11 +594,40 @@ class SlideBuilder:
                 alignment=PP_ALIGN.CENTER,
             )
 
+    def build_content(self, prs: Presentation, data: dict) -> None:
+        """일반 콘텐츠 슬라이드 — 제목 + 불릿 리스트."""
+        slide = self._add_slide(prs, "content")
+        set_bg(slide, self.colors.bg_primary)
+
+        add_text(
+            slide, data.get("title", ""),
+            0.5, 0.3, 12.0, 0.8,
+            font_size=28, font_color=self.colors.text_primary,
+            font_name=self.font_name, bold=True,
+        )
+
+        items = data.get("items", [])
+        if items:
+            add_bullet_list(
+                slide, items,
+                0.8, 1.5, 11.5, 5.5,
+                font_size=16, font_color=self.colors.text_primary,
+                font_name=self.font_name,
+            )
+        elif data.get("content"):
+            add_text(
+                slide, data["content"],
+                0.8, 1.5, 11.5, 5.5,
+                font_size=16, font_color=self.colors.text_primary,
+                font_name=self.font_name,
+            )
+
     # --- 디스패처 ---
 
     BUILDERS: dict[str, str] = {
         "title": "build_title",
         "section": "build_section",
+        "content": "build_content",
         "quote": "build_quote",
         "timeline": "build_timeline",
         "comparison": "build_comparison",

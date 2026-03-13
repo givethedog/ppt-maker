@@ -41,6 +41,41 @@ class ConversionPlan:
     merge_order: list[tuple[str, int]] = field(default_factory=list)
 
 
+def _parse_markdown_sections(markdown: str) -> list[dict]:
+    """마크다운을 섹션 단위로 분리하여 제목과 콘텐츠를 추출."""
+    sections: list[dict] = []
+    current: dict | None = None
+
+    for line in markdown.split("\n"):
+        if line.startswith("## "):
+            if current:
+                current["content"] = current["content"].strip()
+                sections.append(current)
+            current = {"title": line[3:].strip(), "content": "", "index": len(sections) + 1}
+        elif current:
+            # slide hint 주석은 content에 포함하지 않음
+            if not line.strip().startswith("<!-- slide:"):
+                current["content"] += line + "\n"
+
+    if current:
+        current["content"] = current["content"].strip()
+        sections.append(current)
+
+    return sections
+
+
+def _content_to_items(content: str) -> list[str]:
+    """마크다운 bullet 리스트를 문자열 리스트로 변환."""
+    items = []
+    for line in content.split("\n"):
+        stripped = line.strip()
+        if stripped.startswith(("- ", "* ", "• ")):
+            items.append(stripped[2:].strip())
+        elif stripped.startswith(("1.", "2.", "3.", "4.", "5.", "6.", "7.", "8.", "9.")):
+            items.append(stripped.split(".", 1)[1].strip() if "." in stripped else stripped)
+    return items
+
+
 def build_conversion_plan(
     markdown: str,
     hints: list[SlideHint],
@@ -48,19 +83,32 @@ def build_conversion_plan(
     """마크다운과 힌트에서 변환 계획 생성."""
     plan = ConversionPlan()
 
-    # 힌트에서 커스텀 슬라이드 명세 추출
-    custom_types = {
-        "timeline", "comparison", "card_list", "process", "quote", "title",
-        "section", "picture_left", "picture_right", "blank", "blank_dark",
-        "keynote",
-    }
+    # 마크다운 섹션 파싱
+    md_sections = _parse_markdown_sections(markdown)
 
+    # 힌트를 section_index로 매핑
+    hint_map: dict[int, SlideHint] = {}
     for hint in hints:
-        if hint.slide_type in custom_types or hint.conversion_strategy == "custom":
-            plan.custom_slides.append(CustomSlideSpec(
-                slide_type=hint.slide_type,
-                data=hint.extra,
-            ))
+        hint_map[hint.section_index] = hint
+
+    # 모든 힌트에 대해 커스텀 슬라이드 명세 생성 (콘텐츠 포함)
+    for hint in hints:
+        idx = hint.section_index
+        # 매칭되는 마크다운 섹션 찾기
+        md_section = md_sections[idx - 1] if 0 < idx <= len(md_sections) else None
+
+        data = dict(hint.extra)
+        if md_section:
+            data.setdefault("title", md_section["title"])
+            data.setdefault("content", md_section["content"])
+            items = _content_to_items(md_section["content"])
+            if items:
+                data.setdefault("items", items)
+
+        plan.custom_slides.append(CustomSlideSpec(
+            slide_type=hint.slide_type,
+            data=data,
+        ))
 
     # pandoc에는 전체 마크다운 전달 (커스텀 섹션도 기본 슬라이드로 변환)
     plan.pandoc_markdown = markdown
