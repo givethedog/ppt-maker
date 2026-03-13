@@ -1,7 +1,7 @@
 """python-pptx 커스텀 슬라이드 빌더.
 
 구조화된 데이터에서 커스텀 슬라이드를 생성하는 빌더 패턴 구현.
-create_slides.py의 헬퍼(set_bg, add_shape, add_text, add_bullet_list)를 리팩토링.
+템플릿 플레이스홀더를 우선 사용하고, 없으면 직접 도형 배치.
 """
 
 from __future__ import annotations
@@ -23,12 +23,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# 슬라이드 크기 기본값 (16:9)
 SLIDE_WIDTH = Inches(13.333)
 SLIDE_HEIGHT = Inches(7.5)
 
 
-# --- 헬퍼 함수 (create_slides.py에서 리팩토링) ---
+# --- 헬퍼 함수 ---
 
 
 def set_bg(slide, color: RGBColor) -> None:
@@ -132,14 +131,50 @@ def add_bullet_list(
     return tx_box
 
 
+def _fill_placeholder(slide, ph_idx: int, text: str) -> bool:
+    """플레이스홀더에 텍스트를 채운다. 성공하면 True."""
+    try:
+        ph = slide.placeholders[ph_idx]
+        ph.text = text
+        return True
+    except (KeyError, IndexError):
+        return False
+
+
+def _fill_placeholder_bullets(slide, ph_idx: int, items: list[str]) -> bool:
+    """플레이스홀더에 불릿 리스트를 채운다."""
+    try:
+        ph = slide.placeholders[ph_idx]
+        tf = ph.text_frame
+        tf.clear()
+        for i, item in enumerate(items):
+            p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+            p.text = item
+            p.space_after = Pt(4)
+        return True
+    except (KeyError, IndexError):
+        return False
+
+
+def _fill_placeholder_content(slide, ph_idx: int, data: dict) -> bool:
+    """items가 있으면 불릿으로, 없으면 content 텍스트로 플레이스홀더를 채운다."""
+    items = data.get("items", [])
+    if items:
+        return _fill_placeholder_bullets(slide, ph_idx, items)
+    content = data.get("content", "")
+    if content:
+        return _fill_placeholder(slide, ph_idx, content)
+    return False
+
+
 # --- 슬라이드 타입별 빌더 ---
 
 
 class SlideBuilder:
     """커스텀 슬라이드 빌더.
 
-    회사 템플릿이 등록되어 있으면 해당 레이아웃을 사용하고,
-    없으면 기본 Blank 레이아웃에 도형을 직접 배치합니다.
+    회사 템플릿이 등록되어 있으면 플레이스홀더를 우선 채우고,
+    없으면 Blank 레이아웃에 도형을 직접 배치합니다.
     """
 
     def __init__(
@@ -154,12 +189,34 @@ class SlideBuilder:
         self._layout_mapping = layout_mapping or {}
         self.asset_manager = asset_manager
 
+    @property
+    def _has_template(self) -> bool:
+        """템플릿 레이아웃 매핑이 있는지 확인."""
+        return bool(self._layout_mapping)
+
+    # 매핑 없는 타입의 폴백 체인
+    _LAYOUT_FALLBACKS: dict[str, list[str]] = {
+        "keynote": ["section", "content", "blank"],
+        "three_content": ["two_content", "content", "blank"],
+        "grid_2x2": ["two_content", "content", "blank"],
+        "grid_3": ["two_content", "content", "blank"],
+        "content_area": ["content", "blank"],
+        "content_area_dark": ["content", "blank"],
+        "picture_left": ["two_content", "content", "blank"],
+        "picture_right": ["two_content", "content", "blank"],
+    }
+
     def _get_layout(self, prs: Presentation, slide_type: str) -> object:
-        """슬라이드 타입에 매핑된 레이아웃 반환. 없으면 Blank."""
+        """슬라이드 타입에 매핑된 레이아웃 반환. 폴백 체인 탐색."""
         idx = self._layout_mapping.get(slide_type)
         if idx is not None and idx < len(prs.slide_layouts):
             return prs.slide_layouts[idx]
-        # Blank 레이아웃 폴백 (마지막 또는 인덱스 6)
+        # 폴백 체인에서 매핑 찾기
+        for fallback_type in self._LAYOUT_FALLBACKS.get(slide_type, []):
+            fb_idx = self._layout_mapping.get(fallback_type)
+            if fb_idx is not None and fb_idx < len(prs.slide_layouts):
+                return prs.slide_layouts[fb_idx]
+        # 최종 폴백: Blank
         blank_idx = self._layout_mapping.get("blank")
         if blank_idx is not None and blank_idx < len(prs.slide_layouts):
             return prs.slide_layouts[blank_idx]
@@ -171,83 +228,200 @@ class SlideBuilder:
         layout = self._get_layout(prs, slide_type)
         return prs.slides.add_slide(layout)
 
+    # --- 빌더 메서드 ---
+
     def build_title(self, prs: Presentation, data: dict) -> None:
-        """타이틀 슬라이드."""
+        """타이틀 슬라이드. 템플릿: ph0=CENTER_TITLE, ph1=SUBTITLE."""
         slide = self._add_slide(prs, "title")
-        set_bg(slide, self.colors.bg_primary)
 
-        add_text(
-            slide, data.get("title", ""),
-            1.0, 2.0, 11.0, 1.5,
-            font_size=40, font_color=self.colors.text_primary,
-            font_name=self.font_name, bold=True,
-            alignment=PP_ALIGN.CENTER,
-        )
-        if data.get("subtitle"):
+        title = data.get("title", "")
+        subtitle = data.get("subtitle", data.get("content", ""))
+
+        if self._has_template:
+            _fill_placeholder(slide, 0, title)
+            if subtitle:
+                _fill_placeholder(slide, 1, subtitle)
+        else:
+            set_bg(slide, self.colors.bg_primary)
             add_text(
-                slide, data["subtitle"],
-                1.0, 3.8, 11.0, 1.0,
-                font_size=24, font_color=self.colors.accent,
-                font_name=self.font_name,
+                slide, title,
+                1.0, 2.0, 11.0, 1.5,
+                font_size=40, font_color=self.colors.text_primary,
+                font_name=self.font_name, bold=True,
                 alignment=PP_ALIGN.CENTER,
             )
-        if data.get("date"):
-            add_text(
-                slide, data["date"],
-                1.0, 5.5, 11.0, 0.5,
-                font_size=16, font_color=self.colors.text_secondary,
-                font_name=self.font_name,
-                alignment=PP_ALIGN.CENTER,
-            )
+            if subtitle:
+                add_text(
+                    slide, subtitle,
+                    1.0, 3.8, 11.0, 1.0,
+                    font_size=24, font_color=self.colors.accent,
+                    font_name=self.font_name,
+                    alignment=PP_ALIGN.CENTER,
+                )
 
-    def build_quote(self, prs: Presentation, data: dict) -> None:
-        """인용/질문 슬라이드."""
-        slide = self._add_slide(prs, "keynote")
-        set_bg(slide, self.colors.bg_primary)
+    def build_content(self, prs: Presentation, data: dict) -> None:
+        """일반 콘텐츠 슬라이드. 템플릿: ph0=TITLE, ph1=OBJECT(본문)."""
+        slide = self._add_slide(prs, "content")
 
-        # 인용 부호
-        add_text(
-            slide, '"',
-            1.0, 1.0, 1.0, 1.5,
-            font_size=72, font_color=self.colors.accent,
-            font_name=self.font_name, bold=True,
-        )
-        add_text(
-            slide, data.get("quote", ""),
-            1.5, 2.5, 10.0, 2.0,
-            font_size=28, font_color=self.colors.text_primary,
-            font_name=self.font_name,
-            alignment=PP_ALIGN.CENTER,
-        )
-        if data.get("attribution"):
+        title = data.get("title", "")
+        items = data.get("items", [])
+        content = data.get("content", "")
+
+        if self._has_template:
+            _fill_placeholder(slide, 0, title)
+            if items:
+                _fill_placeholder_bullets(slide, 1, items)
+            elif content:
+                _fill_placeholder(slide, 1, content)
+        else:
+            set_bg(slide, self.colors.bg_primary)
             add_text(
-                slide, f"— {data['attribution']}",
-                1.5, 5.0, 10.0, 0.5,
-                font_size=16, font_color=self.colors.text_secondary,
-                font_name=self.font_name,
-                alignment=PP_ALIGN.RIGHT,
+                slide, title,
+                0.5, 0.3, 12.0, 0.8,
+                font_size=28, font_color=self.colors.text_primary,
+                font_name=self.font_name, bold=True,
             )
+            if items:
+                add_bullet_list(
+                    slide, items,
+                    0.8, 1.5, 11.5, 5.5,
+                    font_size=16, font_color=self.colors.text_primary,
+                    font_name=self.font_name,
+                )
+            elif content:
+                add_text(
+                    slide, content,
+                    0.8, 1.5, 11.5, 5.5,
+                    font_size=16, font_color=self.colors.text_primary,
+                    font_name=self.font_name,
+                )
+
+    def build_section(self, prs: Presentation, data: dict) -> None:
+        """섹션 구분 슬라이드. 템플릿: ph0=TITLE, ph1=BODY."""
+        slide = self._add_slide(prs, "section")
+
+        title = data.get("title", "")
+        subtitle = data.get("subtitle", data.get("content", ""))
+
+        if self._has_template:
+            _fill_placeholder(slide, 0, title)
+            if subtitle:
+                _fill_placeholder(slide, 1, subtitle)
+        else:
+            set_bg(slide, self.colors.bg_primary)
+            add_text(
+                slide, title,
+                1.0, 2.5, 11.0, 1.5,
+                font_size=36, font_color=self.colors.text_primary,
+                font_name=self.font_name, bold=True,
+                alignment=PP_ALIGN.LEFT,
+            )
+            if subtitle:
+                add_text(
+                    slide, subtitle,
+                    1.0, 4.2, 11.0, 1.0,
+                    font_size=20, font_color=self.colors.text_secondary,
+                    font_name=self.font_name,
+                    alignment=PP_ALIGN.LEFT,
+                )
+
+    def build_comparison(self, prs: Presentation, data: dict) -> None:
+        """좌우 비교 슬라이드. 구조화 데이터 없으면 content 폴백."""
+        left = data.get("left", {})
+        right = data.get("right", {})
+
+        # 구조화 데이터가 없으면 items를 반반 나눠서 비교 슬라이드로 표시
+        if not left and not right:
+            items = data.get("items", [])
+            content = data.get("content", "")
+            if items and len(items) >= 2:
+                mid = len(items) // 2
+                left = {"title": "", "items": items[:mid]}
+                right = {"title": "", "items": items[mid:]}
+            elif content:
+                # content로 폴백
+                self.build_content(prs, data)
+                return
+
+        slide = self._add_slide(prs, "comparison")
+        title = data.get("title", "")
+
+        if self._has_template:
+            _fill_placeholder(slide, 0, title)
+            # ph1: left label, ph2: left content, ph3: right label, ph4: right content
+            _fill_placeholder(slide, 1, left.get("title", ""))
+            left_items = left.get("items", [])
+            if left_items:
+                _fill_placeholder_bullets(slide, 2, left_items)
+            elif left.get("content"):
+                _fill_placeholder(slide, 2, left["content"])
+            _fill_placeholder(slide, 3, right.get("title", ""))
+            right_items = right.get("items", [])
+            if right_items:
+                _fill_placeholder_bullets(slide, 4, right_items)
+            elif right.get("content"):
+                _fill_placeholder(slide, 4, right["content"])
+        else:
+            set_bg(slide, self.colors.bg_primary)
+            add_text(
+                slide, title,
+                0.5, 0.3, 12.0, 0.8,
+                font_size=28, font_color=self.colors.text_primary,
+                font_name=self.font_name, bold=True,
+            )
+            add_shape(slide, 0.5, 1.5, 5.8, 5.5, fill_color=self.colors.bg_secondary)
+            add_text(
+                slide, left.get("title", ""),
+                0.8, 1.7, 5.2, 0.6,
+                font_size=22, font_color=self.colors.accent,
+                font_name=self.font_name, bold=True,
+            )
+            if left.get("items"):
+                add_bullet_list(
+                    slide, left["items"],
+                    0.8, 2.5, 5.2, 4.0,
+                    font_color=self.colors.text_primary,
+                    font_name=self.font_name,
+                )
+            add_shape(slide, 6.8, 1.5, 5.8, 5.5, fill_color=self.colors.bg_secondary)
+            add_text(
+                slide, right.get("title", ""),
+                7.1, 1.7, 5.2, 0.6,
+                font_size=22, font_color=self.colors.accent2,
+                font_name=self.font_name, bold=True,
+            )
+            if right.get("items"):
+                add_bullet_list(
+                    slide, right["items"],
+                    7.1, 2.5, 5.2, 4.0,
+                    font_color=self.colors.text_primary,
+                    font_name=self.font_name,
+                )
 
     def build_timeline(self, prs: Presentation, data: dict) -> None:
-        """타임라인 슬라이드."""
-        slide = self._add_slide(prs, "three_content")
-        set_bg(slide, self.colors.bg_primary)
-
-        title = data.get("title", "타임라인")
-        add_text(
-            slide, title,
-            0.5, 0.3, 12.0, 0.8,
-            font_size=28, font_color=self.colors.text_primary,
-            font_name=self.font_name, bold=True,
-        )
-
+        """타임라인 슬라이드. 구조화 events가 없으면 content 폴백."""
         events = data.get("events", [])
+
         if not events:
+            # content 폴백: Title and Content 레이아웃 사용
+            self.build_content(prs, data)
             return
 
-        # 타임라인 라인
-        add_shape(slide, 1.0, 3.5, 11.0, 0.03, fill_color=self.colors.accent)
+        slide = self._add_slide(prs, "three_content")
+        title = data.get("title", "Timeline")
 
+        if self._has_template:
+            _fill_placeholder(slide, 0, title)
+        else:
+            set_bg(slide, self.colors.bg_primary)
+            add_text(
+                slide, title,
+                0.5, 0.3, 12.0, 0.8,
+                font_size=28, font_color=self.colors.text_primary,
+                font_name=self.font_name, bold=True,
+            )
+
+        add_shape(slide, 1.0, 3.5, 11.0, 0.03, fill_color=self.colors.accent)
         accent_colors = [self.colors.accent, self.colors.accent2, self.colors.accent3]
         spacing = min(11.0 / max(len(events), 1), 3.0)
 
@@ -258,16 +432,13 @@ class SlideBuilder:
                 from ppt_maker.theme.palette import hex_to_rgb
                 color = hex_to_rgb(color)
 
-            # 이벤트 점
             add_shape(slide, x + spacing / 2 - 0.1, 3.35, 0.2, 0.2, fill_color=color)
-            # 날짜
             add_text(
                 slide, event.get("date", ""),
                 x, 2.3, spacing, 0.5,
                 font_size=12, font_color=self.colors.accent,
                 font_name=self.font_name, alignment=PP_ALIGN.CENTER,
             )
-            # 제목
             add_text(
                 slide, event.get("title", ""),
                 x, 4.0, spacing, 1.0,
@@ -275,66 +446,91 @@ class SlideBuilder:
                 font_name=self.font_name, alignment=PP_ALIGN.CENTER,
             )
 
-    def build_comparison(self, prs: Presentation, data: dict) -> None:
-        """좌우 비교 슬라이드."""
-        slide = self._add_slide(prs, "comparison")
-        set_bg(slide, self.colors.bg_primary)
+    def build_keynote(self, prs: Presentation, data: dict) -> None:
+        """키노트 슬라이드. message 키 없으면 content/items로 폴백."""
+        slide = self._add_slide(prs, "keynote")
+        title = data.get("title", "")
+        message = data.get("message", "")
 
-        title = data.get("title", "비교")
-        add_text(
-            slide, title,
-            0.5, 0.3, 12.0, 0.8,
-            font_size=28, font_color=self.colors.text_primary,
-            font_name=self.font_name, bold=True,
-        )
+        # message가 없으면 content에서 추출
+        if not message:
+            items = data.get("items", [])
+            content = data.get("content", "")
+            if items:
+                message = "\n".join(f"• {item}" for item in items[:5])
+            elif content:
+                message = content
 
-        left = data.get("left", {})
-        right = data.get("right", {})
-
-        # 좌측
-        add_shape(slide, 0.5, 1.5, 5.8, 5.5, fill_color=self.colors.bg_secondary)
-        add_text(
-            slide, left.get("title", ""),
-            0.8, 1.7, 5.2, 0.6,
-            font_size=22, font_color=self.colors.accent,
-            font_name=self.font_name, bold=True,
-        )
-        if left.get("items"):
-            add_bullet_list(
-                slide, left["items"],
-                0.8, 2.5, 5.2, 4.0,
-                font_color=self.colors.text_primary,
-                font_name=self.font_name,
+        if self._has_template:
+            _fill_placeholder(slide, 0, title)
+            if message:
+                _fill_placeholder(slide, 1, message)
+        else:
+            set_bg(slide, self.colors.bg_primary)
+            add_text(
+                slide, title,
+                1.0, 2.0, 11.0, 2.0,
+                font_size=36, font_color=self.colors.text_primary,
+                font_name=self.font_name, bold=True,
+                alignment=PP_ALIGN.CENTER,
             )
+            if message:
+                add_text(
+                    slide, message,
+                    1.5, 4.5, 10.0, 1.5,
+                    font_size=20, font_color=self.colors.text_secondary,
+                    font_name=self.font_name,
+                    alignment=PP_ALIGN.CENTER,
+                )
 
-        # 우측
-        add_shape(slide, 6.8, 1.5, 5.8, 5.5, fill_color=self.colors.bg_secondary)
-        add_text(
-            slide, right.get("title", ""),
-            7.1, 1.7, 5.2, 0.6,
-            font_size=22, font_color=self.colors.accent2,
-            font_name=self.font_name, bold=True,
-        )
-        if right.get("items"):
-            add_bullet_list(
-                slide, right["items"],
-                7.1, 2.5, 5.2, 4.0,
-                font_color=self.colors.text_primary,
-                font_name=self.font_name,
+    def build_quote(self, prs: Presentation, data: dict) -> None:
+        """인용/질문 슬라이드."""
+        slide = self._add_slide(prs, "keynote")
+        quote = data.get("quote", data.get("content", ""))
+
+        if self._has_template:
+            _fill_placeholder(slide, 0, quote)
+            if data.get("attribution"):
+                _fill_placeholder(slide, 1, f"— {data['attribution']}")
+        else:
+            set_bg(slide, self.colors.bg_primary)
+            add_text(
+                slide, '"',
+                1.0, 1.0, 1.0, 1.5,
+                font_size=72, font_color=self.colors.accent,
+                font_name=self.font_name, bold=True,
             )
+            add_text(
+                slide, quote,
+                1.5, 2.5, 10.0, 2.0,
+                font_size=28, font_color=self.colors.text_primary,
+                font_name=self.font_name,
+                alignment=PP_ALIGN.CENTER,
+            )
+            if data.get("attribution"):
+                add_text(
+                    slide, f"— {data['attribution']}",
+                    1.5, 5.0, 10.0, 0.5,
+                    font_size=16, font_color=self.colors.text_secondary,
+                    font_name=self.font_name,
+                    alignment=PP_ALIGN.RIGHT,
+                )
 
     def build_card_list(self, prs: Presentation, data: dict) -> None:
         """카드형 목록 슬라이드."""
         slide = self._add_slide(prs, "grid_2x2")
-        set_bg(slide, self.colors.bg_primary)
 
         title = data.get("title", "")
-        add_text(
-            slide, title,
-            0.5, 0.3, 12.0, 0.8,
-            font_size=28, font_color=self.colors.text_primary,
-            font_name=self.font_name, bold=True,
-        )
+        if self._has_template:
+            _fill_placeholder(slide, 0, title)
+        else:
+            set_bg(slide, self.colors.bg_primary)
+            add_text(
+                slide, title,
+                0.5, 0.3, 12.0, 0.8,
+                font_size=28, font_color=self.colors.text_primary,
+                font_name=self.font_name, bold=True,
+            )
 
         items = data.get("items", [])
         accent_colors = [self.colors.accent, self.colors.accent2, self.colors.accent3]
@@ -346,13 +542,14 @@ class SlideBuilder:
             y = 1.5 + row * 3.0
 
             add_shape(slide, x, y, 3.8, 2.5, fill_color=self.colors.bg_secondary)
+            item_title = item.get("title", item) if isinstance(item, dict) else str(item)
             add_text(
-                slide, item.get("title", ""),
+                slide, item_title,
                 x + 0.2, y + 0.2, 3.4, 0.5,
                 font_size=18, font_color=accent_colors[i % len(accent_colors)],
                 font_name=self.font_name, bold=True,
             )
-            if item.get("detail"):
+            if isinstance(item, dict) and item.get("detail"):
                 add_text(
                     slide, item["detail"],
                     x + 0.2, y + 0.8, 3.4, 1.5,
@@ -361,24 +558,28 @@ class SlideBuilder:
                 )
 
     def build_process(self, prs: Presentation, data: dict) -> None:
-        """단계별 프로세스 슬라이드."""
-        slide = self._add_slide(prs, "grid_3")
-        set_bg(slide, self.colors.bg_primary)
-
-        title = data.get("title", "프로세스")
-        add_text(
-            slide, title,
-            0.5, 0.3, 12.0, 0.8,
-            font_size=28, font_color=self.colors.text_primary,
-            font_name=self.font_name, bold=True,
-        )
-
+        """단계별 프로세스 슬라이드. steps가 없으면 content 폴백."""
         steps = data.get("steps", [])
-        accent_colors = [self.colors.accent, self.colors.accent2, self.colors.accent3]
-        n = len(steps)
-        if n == 0:
+        if not steps:
+            self.build_content(prs, data)
             return
 
+        slide = self._add_slide(prs, "grid_3")
+        title = data.get("title", "Process")
+
+        if self._has_template:
+            _fill_placeholder(slide, 0, title)
+        else:
+            set_bg(slide, self.colors.bg_primary)
+            add_text(
+                slide, title,
+                0.5, 0.3, 12.0, 0.8,
+                font_size=28, font_color=self.colors.text_primary,
+                font_name=self.font_name, bold=True,
+            )
+
+        accent_colors = [self.colors.accent, self.colors.accent2, self.colors.accent3]
+        n = len(steps)
         step_width = min(12.0 / n, 3.0)
         start_x = (13.333 - step_width * n) / 2
 
@@ -386,7 +587,6 @@ class SlideBuilder:
             x = start_x + i * step_width
             color = accent_colors[i % len(accent_colors)]
 
-            # 단계 번호 원
             add_shape(slide, x + step_width / 2 - 0.3, 2.0, 0.6, 0.6, fill_color=color)
             add_text(
                 slide, str(i + 1),
@@ -395,7 +595,6 @@ class SlideBuilder:
                 font_name=self.font_name, bold=True,
                 alignment=PP_ALIGN.CENTER,
             )
-            # 라벨
             add_text(
                 slide, step.get("label", ""),
                 x, 2.8, step_width, 0.5,
@@ -403,7 +602,6 @@ class SlideBuilder:
                 font_name=self.font_name, bold=True,
                 alignment=PP_ALIGN.CENTER,
             )
-            # 설명
             if step.get("desc"):
                 add_text(
                     slide, step["desc"],
@@ -412,8 +610,6 @@ class SlideBuilder:
                     font_name=self.font_name,
                     alignment=PP_ALIGN.CENTER,
                 )
-
-            # 화살표 (마지막 제외)
             if i < n - 1:
                 add_text(
                     slide, "→",
@@ -423,40 +619,22 @@ class SlideBuilder:
                     alignment=PP_ALIGN.CENTER,
                 )
 
-    def build_section(self, prs: Presentation, data: dict) -> None:
-        """섹션 구분 슬라이드."""
-        slide = self._add_slide(prs, "section")
-        set_bg(slide, self.colors.bg_primary)
-
-        add_text(
-            slide, data.get("title", ""),
-            1.0, 2.5, 11.0, 1.5,
-            font_size=36, font_color=self.colors.text_primary,
-            font_name=self.font_name, bold=True,
-            alignment=PP_ALIGN.LEFT,
-        )
-        if data.get("subtitle"):
-            add_text(
-                slide, data["subtitle"],
-                1.0, 4.2, 11.0, 1.0,
-                font_size=20, font_color=self.colors.text_secondary,
-                font_name=self.font_name,
-                alignment=PP_ALIGN.LEFT,
-            )
-
     def build_picture_left(self, prs: Presentation, data: dict) -> None:
         """좌측 이미지 + 우측 텍스트 슬라이드."""
         slide = self._add_slide(prs, "picture_left")
-        set_bg(slide, self.colors.bg_primary)
 
-        add_text(
-            slide, data.get("title", ""),
-            0.5, 0.3, 12.0, 0.8,
-            font_size=28, font_color=self.colors.text_primary,
-            font_name=self.font_name, bold=True,
-        )
+        if self._has_template:
+            _fill_placeholder(slide, 0, data.get("title", ""))
+            _fill_placeholder_content(slide, 1, data)
+        else:
+            set_bg(slide, self.colors.bg_primary)
+            add_text(
+                slide, data.get("title", ""),
+                0.5, 0.3, 12.0, 0.8,
+                font_size=28, font_color=self.colors.text_primary,
+                font_name=self.font_name, bold=True,
+            )
 
-        # 좌측 이미지 영역 — asset_manager가 있으면 실제 이미지 삽입
         brand_name = data.get("brand", data.get("image", ""))
         image_path: Path | None = None
         if self.asset_manager and brand_name:
@@ -467,65 +645,51 @@ class SlideBuilder:
                 str(image_path),
                 Inches(0.5), Inches(1.5), Inches(4.5), Inches(5.0),
             )
-        else:
-            # 폴백: 색상 사각형 플레이스홀더
+        elif not self._has_template:
             add_shape(
                 slide, 0.5, 1.5, 5.5, 5.5,
                 fill_color=self.colors.bg_secondary,
             )
             add_text(
-                slide, data.get("image_label", "[이미지]"),
+                slide, data.get("image_label", "[Image]"),
                 1.5, 3.5, 3.5, 1.0,
                 font_size=16, font_color=self.colors.text_secondary,
                 font_name=self.font_name,
                 alignment=PP_ALIGN.CENTER,
             )
 
-        # 우측 텍스트
-        if data.get("content"):
-            add_text(
-                slide, data["content"],
-                6.5, 1.8, 6.0, 5.0,
-                font_size=16, font_color=self.colors.text_primary,
-                font_name=self.font_name,
-            )
-        if data.get("items"):
-            add_bullet_list(
-                slide, data["items"],
-                6.5, 1.8, 6.0, 5.0,
-                font_color=self.colors.text_primary,
-                font_name=self.font_name,
-            )
+        if not self._has_template:
+            if data.get("content"):
+                add_text(
+                    slide, data["content"],
+                    6.5, 1.8, 6.0, 5.0,
+                    font_size=16, font_color=self.colors.text_primary,
+                    font_name=self.font_name,
+                )
+            if data.get("items"):
+                add_bullet_list(
+                    slide, data["items"],
+                    6.5, 1.8, 6.0, 5.0,
+                    font_color=self.colors.text_primary,
+                    font_name=self.font_name,
+                )
 
     def build_picture_right(self, prs: Presentation, data: dict) -> None:
         """좌측 텍스트 + 우측 이미지 슬라이드."""
         slide = self._add_slide(prs, "picture_right")
-        set_bg(slide, self.colors.bg_primary)
 
-        add_text(
-            slide, data.get("title", ""),
-            0.5, 0.3, 12.0, 0.8,
-            font_size=28, font_color=self.colors.text_primary,
-            font_name=self.font_name, bold=True,
-        )
-
-        # 좌측 텍스트
-        if data.get("content"):
+        if self._has_template:
+            _fill_placeholder(slide, 0, data.get("title", ""))
+            _fill_placeholder_content(slide, 1, data)
+        else:
+            set_bg(slide, self.colors.bg_primary)
             add_text(
-                slide, data["content"],
-                0.5, 1.8, 6.0, 5.0,
-                font_size=16, font_color=self.colors.text_primary,
-                font_name=self.font_name,
-            )
-        if data.get("items"):
-            add_bullet_list(
-                slide, data["items"],
-                0.5, 1.8, 6.0, 5.0,
-                font_color=self.colors.text_primary,
-                font_name=self.font_name,
+                slide, data.get("title", ""),
+                0.5, 0.3, 12.0, 0.8,
+                font_size=28, font_color=self.colors.text_primary,
+                font_name=self.font_name, bold=True,
             )
 
-        # 우측 이미지 영역 — asset_manager가 있으면 실제 이미지 삽입
         brand_name = data.get("brand", data.get("image", ""))
         image_path: Path | None = None
         if self.asset_manager and brand_name:
@@ -536,26 +700,44 @@ class SlideBuilder:
                 str(image_path),
                 Inches(8.0), Inches(1.5), Inches(4.5), Inches(5.0),
             )
-        else:
-            # 폴백: 색상 사각형 플레이스홀더
+        elif not self._has_template:
             add_shape(
                 slide, 7.0, 1.5, 5.5, 5.5,
                 fill_color=self.colors.bg_secondary,
             )
             add_text(
-                slide, data.get("image_label", "[이미지]"),
+                slide, data.get("image_label", "[Image]"),
                 8.0, 3.5, 3.5, 1.0,
                 font_size=16, font_color=self.colors.text_secondary,
                 font_name=self.font_name,
                 alignment=PP_ALIGN.CENTER,
             )
 
+        if not self._has_template:
+            if data.get("content"):
+                add_text(
+                    slide, data["content"],
+                    0.5, 1.8, 6.0, 5.0,
+                    font_size=16, font_color=self.colors.text_primary,
+                    font_name=self.font_name,
+                )
+            if data.get("items"):
+                add_bullet_list(
+                    slide, data["items"],
+                    0.5, 1.8, 6.0, 5.0,
+                    font_color=self.colors.text_primary,
+                    font_name=self.font_name,
+                )
+
     def build_blank(self, prs: Presentation, data: dict) -> None:
         """빈 콘텐츠 영역 슬라이드 (밝은 배경)."""
         slide = self._add_slide(prs, "content_area")
-        if data.get("title"):
+        title = data.get("title", "")
+        if title and not (
+            self._has_template and _fill_placeholder(slide, 0, title)
+        ):
             add_text(
-                slide, data["title"],
+                slide, title,
                 0.5, 0.3, 12.0, 0.8,
                 font_size=28, font_color=self.colors.text_primary,
                 font_name=self.font_name, bold=True,
@@ -564,62 +746,17 @@ class SlideBuilder:
     def build_blank_dark(self, prs: Presentation, data: dict) -> None:
         """빈 콘텐츠 영역 슬라이드 (어두운 배경)."""
         slide = self._add_slide(prs, "content_area_dark")
-        set_bg(slide, self.colors.bg_primary)
-        if data.get("title"):
+        if not self._has_template:
+            set_bg(slide, self.colors.bg_primary)
+        title = data.get("title", "")
+        if title and not (
+            self._has_template and _fill_placeholder(slide, 0, title)
+        ):
             add_text(
-                slide, data["title"],
+                slide, title,
                 0.5, 0.3, 12.0, 0.8,
                 font_size=28, font_color=self.colors.text_primary,
                 font_name=self.font_name, bold=True,
-            )
-
-    def build_keynote(self, prs: Presentation, data: dict) -> None:
-        """키노트 슬라이드 — 이미지 + 핵심 메시지."""
-        slide = self._add_slide(prs, "keynote")
-        set_bg(slide, self.colors.bg_primary)
-
-        add_text(
-            slide, data.get("title", ""),
-            1.0, 2.0, 11.0, 2.0,
-            font_size=36, font_color=self.colors.text_primary,
-            font_name=self.font_name, bold=True,
-            alignment=PP_ALIGN.CENTER,
-        )
-        if data.get("message"):
-            add_text(
-                slide, data["message"],
-                1.5, 4.5, 10.0, 1.5,
-                font_size=20, font_color=self.colors.text_secondary,
-                font_name=self.font_name,
-                alignment=PP_ALIGN.CENTER,
-            )
-
-    def build_content(self, prs: Presentation, data: dict) -> None:
-        """일반 콘텐츠 슬라이드 — 제목 + 불릿 리스트."""
-        slide = self._add_slide(prs, "content")
-        set_bg(slide, self.colors.bg_primary)
-
-        add_text(
-            slide, data.get("title", ""),
-            0.5, 0.3, 12.0, 0.8,
-            font_size=28, font_color=self.colors.text_primary,
-            font_name=self.font_name, bold=True,
-        )
-
-        items = data.get("items", [])
-        if items:
-            add_bullet_list(
-                slide, items,
-                0.8, 1.5, 11.5, 5.5,
-                font_size=16, font_color=self.colors.text_primary,
-                font_name=self.font_name,
-            )
-        elif data.get("content"):
-            add_text(
-                slide, data["content"],
-                0.8, 1.5, 11.5, 5.5,
-                font_size=16, font_color=self.colors.text_primary,
-                font_name=self.font_name,
             )
 
     # --- 디스패처 ---
@@ -665,8 +802,6 @@ class SlideBuilder:
         """프레젠테이션 생성. 회사 템플릿이 있으면 해당 파일 기반."""
         if template_path and template_path.exists():
             prs = Presentation(str(template_path))
-            # 기존 가이드 슬라이드 제거 (빈 프레젠테이션으로 시작)
-            # lxml element를 직접 조작하여 XML 트리 정합성 보장
             xml_slides = prs.slides._sldIdLst
             for slide_id in list(xml_slides):
                 rel_id = slide_id.get(
