@@ -10,17 +10,6 @@ subtitle: "IT Team Knowledge Sharing | March 2026"author: "IT Team"---
 
 ---
 
-## AI Trends 2025-2026: The Age of Agentic AI
-
-<!-- slide: type=title -->
-
-IT Team Knowledge Sharing | March 2026
-
-From conversation tools to working agents — the AI landscape has fundamentally shifted.
-
-
----
-
 ## The Past Year in Review
 
 <!-- slide: type=timeline -->
@@ -212,9 +201,8 @@ The age of agentic AI has begun. n8n opens the door at the lowest threshold.
 
 ## 요약
 
-본 보고서에서는 **AI Trends 2025-2026: The Age of Agentic AI**에 대해 9개 섹션으로 나누어 분석하였습니다.
+본 보고서에서는 **AI Trends 2025-2026: The Age of Agentic AI**에 대해 8개 섹션으로 나누어 분석하였습니다.
 
-- **AI Trends 2025-2026: The Age of Agentic AI**
 - **The Past Year in Review**
 - **The LLM Race: A Five-Way Battle**
 - **MCP: Rise, Limits, and the Native AI Era**
