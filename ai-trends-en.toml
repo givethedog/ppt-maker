@@ -9,15 +9,6 @@ output_dir = "./output/ai-trends-en"
 enabled = false
 
 [[sections]]
-title = "AI Trends 2025-2026: The Age of Agentic AI"
-slide_type = "title"
-content = """
-IT Team Knowledge Sharing | March 2026
-
-From conversation tools to working agents — the AI landscape has fundamentally shifted.
-"""
-
-[[sections]]
 title = "The Past Year in Review"
 slide_type = "timeline"
 content = """

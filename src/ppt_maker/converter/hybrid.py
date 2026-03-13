@@ -91,6 +91,15 @@ def build_conversion_plan(
     for hint in hints:
         hint_map[hint.section_index] = hint
 
+    # H1 제목과 부제 추출 (title 슬라이드용, section_index=0)
+    h1_title = ""
+    h1_subtitle = ""
+    for line in markdown.split("\n"):
+        if line.startswith("# ") and not line.startswith("## "):
+            h1_title = line[2:].strip()
+        elif line.startswith("> ") and h1_title and not h1_subtitle:
+            h1_subtitle = line[2:].strip()
+
     # 모든 힌트에 대해 커스텀 슬라이드 명세 생성 (콘텐츠 포함)
     for hint in hints:
         idx = hint.section_index
@@ -98,7 +107,11 @@ def build_conversion_plan(
         md_section = md_sections[idx - 1] if 0 < idx <= len(md_sections) else None
 
         data = dict(hint.extra)
-        if md_section:
+        if idx == 0 and hint.slide_type == "title":
+            # 자동 생성 타이틀: H1에서 제목/부제 추출
+            data.setdefault("title", h1_title)
+            data.setdefault("subtitle", h1_subtitle)
+        elif md_section:
             data.setdefault("title", md_section["title"])
             data.setdefault("content", md_section["content"])
             items = _content_to_items(md_section["content"])
