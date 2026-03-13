@@ -131,25 +131,52 @@ def add_bullet_list(
     return tx_box
 
 
+def _parse_md_runs(text: str) -> list[tuple[str, bool]]:
+    """마크다운 **bold** → (텍스트, is_bold) 튜플 리스트."""
+    import re
+    parts: list[tuple[str, bool]] = []
+    last_end = 0
+    for m in re.finditer(r"\*\*(.+?)\*\*", text):
+        if m.start() > last_end:
+            parts.append((text[last_end:m.start()], False))
+        parts.append((m.group(1), True))
+        last_end = m.end()
+    if last_end < len(text):
+        parts.append((text[last_end:], False))
+    return parts or [("", False)]
+
+
+def _set_paragraph_with_bold(p, text: str) -> None:
+    """paragraph에 마크다운 bold를 실제 pptx bold run으로 변환."""
+    runs = _parse_md_runs(text)
+    p.clear()
+    for run_text, is_bold in runs:
+        run = p.add_run()
+        run.text = run_text
+        run.font.bold = is_bold
+
+
 def _fill_placeholder(slide, ph_idx: int, text: str) -> bool:
-    """플레이스홀더에 텍스트를 채운다. 성공하면 True."""
+    """플레이스홀더에 텍스트를 채운다. **bold** → 실제 bold."""
     try:
         ph = slide.placeholders[ph_idx]
-        ph.text = text
+        tf = ph.text_frame
+        tf.clear()
+        _set_paragraph_with_bold(tf.paragraphs[0], text)
         return True
     except (KeyError, IndexError):
         return False
 
 
 def _fill_placeholder_bullets(slide, ph_idx: int, items: list[str]) -> bool:
-    """플레이스홀더에 불릿 리스트를 채운다."""
+    """플레이스홀더에 불릿 리스트를 채운다. **bold** → 실제 bold."""
     try:
         ph = slide.placeholders[ph_idx]
         tf = ph.text_frame
         tf.clear()
         for i, item in enumerate(items):
             p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-            p.text = item
+            _set_paragraph_with_bold(p, item)
             p.space_after = Pt(4)
         return True
     except (KeyError, IndexError):
@@ -196,7 +223,7 @@ class SlideBuilder:
 
     # 매핑 없는 타입의 폴백 체인
     _LAYOUT_FALLBACKS: dict[str, list[str]] = {
-        "keynote": ["section", "content", "blank"],
+        "keynote": ["content", "section", "blank"],
         "three_content": ["two_content", "content", "blank"],
         "grid_2x2": ["two_content", "content", "blank"],
         "grid_3": ["two_content", "content", "blank"],
@@ -457,13 +484,17 @@ class SlideBuilder:
             items = data.get("items", [])
             content = data.get("content", "")
             if items:
-                message = "\n".join(f"• {item}" for item in items[:5])
+                message = "\n".join(f"• {item}" for item in items)
             elif content:
                 message = content
 
         if self._has_template:
             _fill_placeholder(slide, 0, title)
-            if message:
+            # items가 있으면 불릿으로, 없으면 단일 텍스트로
+            items = data.get("items", [])
+            if items:
+                _fill_placeholder_bullets(slide, 1, items)
+            elif message:
                 _fill_placeholder(slide, 1, message)
         else:
             set_bg(slide, self.colors.bg_primary)
