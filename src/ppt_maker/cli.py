@@ -6,10 +6,13 @@ import shutil
 from pathlib import Path
 
 import typer
+from dotenv import load_dotenv
 from rich.console import Console
 
 from ppt_maker import __version__
 from ppt_maker.errors import PptMakerError
+
+load_dotenv()
 
 app = typer.Typer(
     name="ppt-maker",
@@ -45,6 +48,9 @@ def generate(  # noqa: B008
     output_dir: Path = typer.Option(
         Path("./output"), "--output", "-o", help="출력 디렉토리",
     ),
+    no_research: bool = typer.Option(
+        False, "--no-research", help="LLM 콘텐츠 생성을 건너뜁니다",
+    ),
 ) -> None:
     """주제에 대한 보고서(.md)와 프레젠테이션(.pptx)을 생성합니다."""
     try:
@@ -55,6 +61,9 @@ def generate(  # noqa: B008
             topic_config = TopicConfig.from_toml(config)
         else:
             topic_config = TopicConfig(topic=topic, theme=theme, output_dir=output_dir)
+
+        if no_research:
+            topic_config.use_research = False
 
         # 템플릿 등록 확인
         from ppt_maker.workspace import is_template_registered

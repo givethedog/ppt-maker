@@ -61,6 +61,11 @@ class TopicConfig:
     font_family: str = "auto"
     slide_width: float = 13.333
     slide_height: float = 7.5
+    # LLM 설정
+    llm_api_base: str = ""
+    llm_model: str = "gpt-4o-mini"
+    llm_api_key_env: str = "LLM_API_KEY"
+    use_research: bool = True
 
     def __post_init__(self) -> None:
         if not self.topic.strip():
@@ -96,8 +101,21 @@ class TopicConfig:
             for s in sections_raw
         ]
 
+        # LLM 설정 추출
+        llm_raw = project.pop("llm", {})
+        llm_fields: dict = {}
+        if llm_raw:
+            if "api_base" in llm_raw:
+                llm_fields["llm_api_base"] = llm_raw["api_base"]
+            if "model" in llm_raw:
+                llm_fields["llm_model"] = llm_raw["model"]
+            if "api_key_env" in llm_raw:
+                llm_fields["llm_api_key_env"] = llm_raw["api_key_env"]
+            if "enabled" in llm_raw:
+                llm_fields["use_research"] = llm_raw["enabled"]
+
         try:
-            return cls(sections=sections, **project)
+            return cls(sections=sections, **project, **llm_fields)
         except TypeError as e:
             raise ConfigError(
                 f"설정 파일에 잘못된 필드가 있습니다: {path}",

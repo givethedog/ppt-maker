@@ -55,6 +55,7 @@ class TestPipeline:
         config = TopicConfig(
             topic="빈 섹션 테스트",
             output_dir=tmp_path / "output",
+            use_research=False,
         )
         result = run_pipeline(config)
         assert result.markdown_path.exists()

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pptx import Presentation
 from pptx.dml.color import RGBColor
@@ -16,6 +17,9 @@ from pptx.util import Emu, Inches, Pt
 
 from ppt_maker.errors import PptxCustomError
 from ppt_maker.theme.palette import ThemeConfig
+
+if TYPE_CHECKING:
+    from ppt_maker.assets.manager import AssetManager
 
 logger = logging.getLogger(__name__)
 
@@ -142,11 +146,13 @@ class SlideBuilder:
         self,
         theme: ThemeConfig,
         layout_mapping: dict[str, int] | None = None,
+        asset_manager: AssetManager | None = None,
     ) -> None:
         self.theme = theme
         self.colors = theme.colors
         self.font_name = theme.fonts.heading
         self._layout_mapping = layout_mapping or {}
+        self.asset_manager = asset_manager
 
     def _get_layout(self, prs: Presentation, slide_type: str) -> object:
         """슬라이드 타입에 매핑된 레이아웃 반환. 없으면 Blank."""
@@ -450,18 +456,30 @@ class SlideBuilder:
             font_name=self.font_name, bold=True,
         )
 
-        # 좌측 이미지 영역 (플레이스홀더)
-        add_shape(
-            slide, 0.5, 1.5, 5.5, 5.5,
-            fill_color=self.colors.bg_secondary,
-        )
-        add_text(
-            slide, data.get("image_label", "[이미지]"),
-            1.5, 3.5, 3.5, 1.0,
-            font_size=16, font_color=self.colors.text_secondary,
-            font_name=self.font_name,
-            alignment=PP_ALIGN.CENTER,
-        )
+        # 좌측 이미지 영역 — asset_manager가 있으면 실제 이미지 삽입
+        brand_name = data.get("brand", data.get("image", ""))
+        image_path: Path | None = None
+        if self.asset_manager and brand_name:
+            image_path = self.asset_manager.find_brand_image(brand_name)
+
+        if image_path and image_path.exists():
+            slide.shapes.add_picture(
+                str(image_path),
+                Inches(0.5), Inches(1.5), Inches(4.5), Inches(5.0),
+            )
+        else:
+            # 폴백: 색상 사각형 플레이스홀더
+            add_shape(
+                slide, 0.5, 1.5, 5.5, 5.5,
+                fill_color=self.colors.bg_secondary,
+            )
+            add_text(
+                slide, data.get("image_label", "[이미지]"),
+                1.5, 3.5, 3.5, 1.0,
+                font_size=16, font_color=self.colors.text_secondary,
+                font_name=self.font_name,
+                alignment=PP_ALIGN.CENTER,
+            )
 
         # 우측 텍스트
         if data.get("content"):
@@ -507,18 +525,30 @@ class SlideBuilder:
                 font_name=self.font_name,
             )
 
-        # 우측 이미지 영역
-        add_shape(
-            slide, 7.0, 1.5, 5.5, 5.5,
-            fill_color=self.colors.bg_secondary,
-        )
-        add_text(
-            slide, data.get("image_label", "[이미지]"),
-            8.0, 3.5, 3.5, 1.0,
-            font_size=16, font_color=self.colors.text_secondary,
-            font_name=self.font_name,
-            alignment=PP_ALIGN.CENTER,
-        )
+        # 우측 이미지 영역 — asset_manager가 있으면 실제 이미지 삽입
+        brand_name = data.get("brand", data.get("image", ""))
+        image_path: Path | None = None
+        if self.asset_manager and brand_name:
+            image_path = self.asset_manager.find_brand_image(brand_name)
+
+        if image_path and image_path.exists():
+            slide.shapes.add_picture(
+                str(image_path),
+                Inches(8.0), Inches(1.5), Inches(4.5), Inches(5.0),
+            )
+        else:
+            # 폴백: 색상 사각형 플레이스홀더
+            add_shape(
+                slide, 7.0, 1.5, 5.5, 5.5,
+                fill_color=self.colors.bg_secondary,
+            )
+            add_text(
+                slide, data.get("image_label", "[이미지]"),
+                8.0, 3.5, 3.5, 1.0,
+                font_size=16, font_color=self.colors.text_secondary,
+                font_name=self.font_name,
+                alignment=PP_ALIGN.CENTER,
+            )
 
     def build_blank(self, prs: Presentation, data: dict) -> None:
         """빈 콘텐츠 영역 슬라이드 (밝은 배경)."""

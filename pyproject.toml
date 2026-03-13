@@ -20,6 +20,8 @@ dependencies = [
     "tomli>=2.0;python_version<'3.11'",
     "tomli_w>=1.0",
     "cairosvg>=2.7",
+    "openai>=1.0",
+    "python-dotenv>=1.0",
 ]
 
 [project.optional-dependencies]

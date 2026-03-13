@@ -6,6 +6,7 @@ import logging
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pptx import Presentation
 
@@ -14,6 +15,9 @@ from ppt_maker.converter.pandoc import md_to_pptx
 from ppt_maker.converter.pptx_custom import SlideBuilder
 from ppt_maker.errors import PandocError, PptxCustomError
 from ppt_maker.theme.palette import ThemeConfig
+
+if TYPE_CHECKING:
+    from ppt_maker.assets.manager import AssetManager
 
 logger = logging.getLogger(__name__)
 
@@ -72,10 +76,15 @@ class HybridConverter:
         theme: ThemeConfig,
         layout_mapping: dict[str, int] | None = None,
         template_path: Path | None = None,
+        asset_manager: AssetManager | None = None,
     ) -> None:
         self.theme = theme
         self.template_path = template_path
-        self.builder = SlideBuilder(theme, layout_mapping=layout_mapping)
+        self.builder = SlideBuilder(
+            theme,
+            layout_mapping=layout_mapping,
+            asset_manager=asset_manager,
+        )
 
     def convert(
         self,
@@ -124,8 +133,8 @@ class HybridConverter:
             pandoc_pptx.unlink(missing_ok=True)
 
             # 커스텀 슬라이드가 있으면 병합
-            if custom_prs and len(custom_prs.slides) > 0:
-                self._merge_custom_slides(output_path, custom_prs)
+            if plan.custom_slides:
+                self._append_custom_slides(output_path, plan.custom_slides)
 
         elif custom_prs and len(custom_prs.slides) > 0:
             # pandoc 없이 커스텀만으로
@@ -140,19 +149,25 @@ class HybridConverter:
         logger.info("PPTX 생성 완료: %s", output_path)
         return output_path
 
-    def _merge_custom_slides(self, base_path: Path, custom_prs: Presentation) -> None:
-        """커스텀 슬라이드를 기존 PPTX에 병합.
+    def _append_custom_slides(
+        self, base_path: Path, custom_specs: list[CustomSlideSpec],
+    ) -> None:
+        """커스텀 슬라이드를 기존 PPTX에 직접 추가.
 
-        현재는 커스텀 슬라이드를 별도 파일로 저장하고 사용자에게 안내합니다.
-        완전한 슬라이드 병합은 향후 구현.
+        pandoc이 생성한 프레젠테이션을 열어서, 같은 파일 안에
+        커스텀 슬라이드를 SlideBuilder로 직접 빌드합니다.
         """
-        custom_count = len(custom_prs.slides)
-        custom_path = base_path.with_name(
-            base_path.stem + "_custom" + base_path.suffix
-        )
-        custom_prs.save(str(custom_path))
-        logger.warning(
-            "커스텀 슬라이드 %d개가 별도 파일로 저장됨: %s "
-            "(자동 병합은 향후 구현 예정)",
-            custom_count, custom_path,
-        )
+        prs = Presentation(str(base_path))
+        added = 0
+        for spec in custom_specs:
+            try:
+                self.builder.build_slide(prs, spec.slide_type, spec.data)
+                added += 1
+            except PptxCustomError as e:
+                logger.warning(
+                    "커스텀 슬라이드 병합 건너뜀 (%s): %s",
+                    spec.slide_type, e,
+                )
+        if added:
+            prs.save(str(base_path))
+            logger.info("커스텀 슬라이드 %d개를 기존 PPTX에 병합 완료", added)
