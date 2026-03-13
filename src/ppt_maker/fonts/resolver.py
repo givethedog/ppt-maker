@@ -13,10 +13,20 @@ from dataclasses import dataclass
 logger = logging.getLogger(__name__)
 
 # OS별 기본 한글 폰트 및 폴백 체인
+# BMWGroupTN Condensed: BMW CI 폰트 (회사 템플릿 사용 시 우선)
 KOREAN_FONT_CHAINS: dict[str, list[str]] = {
-    "Darwin": ["Apple SD Gothic Neo", "Noto Sans KR", "AppleGothic"],
-    "Linux": ["Noto Sans KR", "NanumGothic", "UnDotum"],
-    "Windows": ["Malgun Gothic", "NanumGothic", "Gulim"],
+    "Darwin": [
+        "BMWGroupTN Condensed", "Apple SD Gothic Neo",
+        "Noto Sans KR", "AppleGothic",
+    ],
+    "Linux": [
+        "BMWGroupTN Condensed", "Noto Sans KR",
+        "NanumGothic", "UnDotum",
+    ],
+    "Windows": [
+        "BMWGroupTN Condensed", "Malgun Gothic",
+        "NanumGothic", "Gulim",
+    ],
 }
 
 # 일반 폴백 (한글 폰트를 하나도 못 찾을 때)
@@ -55,11 +65,14 @@ def _font_exists_macos(font_name: str) -> bool:
         )
         if result.stdout.strip():
             return True
-        result = subprocess.run(
-            ["mdfind", "-name", f"{font_name}.ttc"],
-            capture_output=True, text=True, timeout=10,
-        )
-        return bool(result.stdout.strip())
+        for ext in (".ttc", ".otf"):
+            result = subprocess.run(
+                ["mdfind", "-name", f"{font_name}{ext}"],
+                capture_output=True, text=True, timeout=10,
+            )
+            if result.stdout.strip():
+                return True
+        return False
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
 

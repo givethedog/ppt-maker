@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from ppt_maker.errors import (
     ConfigError,
     ConfigFileNotFoundError,

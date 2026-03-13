@@ -69,7 +69,8 @@ class TestColorPalette:
 
 class TestThemeConfig:
     def test_from_toml_dark(self) -> None:
-        toml_path = Path(__file__).parent.parent / "src" / "ppt_maker" / "theme" / "themes" / "dark" / "theme.toml"
+        base = Path(__file__).parent.parent / "src" / "ppt_maker"
+        toml_path = base / "theme" / "themes" / "dark" / "theme.toml"
         theme = ThemeConfig.from_toml(toml_path)
         assert theme.name == "dark"
         assert theme.colors.bg_primary == RGBColor(0x1A, 0x1A, 0x2E)

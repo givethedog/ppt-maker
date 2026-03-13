@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from ppt_maker.config import SectionConfig, TopicConfig
 from ppt_maker.pipeline import PipelineResult, run_pipeline
 

@@ -8,7 +8,6 @@ from pathlib import Path
 import pytest
 
 from ppt_maker.converter.pandoc import check_pandoc, md_to_pptx
-from ppt_maker.errors import PandocConversionError
 
 # pandoc 설치 여부에 따라 스킵
 has_pandoc = shutil.which("pandoc") is not None

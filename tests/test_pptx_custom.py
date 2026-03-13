@@ -81,12 +81,79 @@ class TestSlideBuilder:
         builder.build_slide(prs, "title", {"title": "디스패처 테스트"})
         assert len(prs.slides) == 1
 
+    def test_build_section(self, builder: SlideBuilder, prs: Presentation) -> None:
+        builder.build_section(prs, {"title": "제2장", "subtitle": "AI의 미래"})
+        assert len(prs.slides) == 1
+
+    def test_build_picture_left(self, builder: SlideBuilder, prs: Presentation) -> None:
+        builder.build_picture_left(prs, {
+            "title": "차량 소개",
+            "items": ["특징 1", "특징 2"],
+            "image_label": "[BMW i4]",
+        })
+        assert len(prs.slides) == 1
+
+    def test_build_picture_right(self, builder: SlideBuilder, prs: Presentation) -> None:
+        builder.build_picture_right(prs, {
+            "title": "성능 비교",
+            "content": "최고 출력 544ps",
+        })
+        assert len(prs.slides) == 1
+
+    def test_build_blank(self, builder: SlideBuilder, prs: Presentation) -> None:
+        builder.build_blank(prs, {"title": "빈 슬라이드"})
+        assert len(prs.slides) == 1
+
+    def test_build_blank_dark(self, builder: SlideBuilder, prs: Presentation) -> None:
+        builder.build_blank_dark(prs, {"title": "다크 슬라이드"})
+        assert len(prs.slides) == 1
+
+    def test_build_keynote(self, builder: SlideBuilder, prs: Presentation) -> None:
+        builder.build_keynote(prs, {
+            "title": "핵심 메시지",
+            "message": "혁신은 계속됩니다",
+        })
+        assert len(prs.slides) == 1
+
+    def test_layout_mapping(self) -> None:
+        """레이아웃 매핑이 적용되는지 확인."""
+        tm = ThemeManager()
+        theme = tm.load_theme("dark")
+        mapping = {"title": 0, "content": 1}
+        builder = SlideBuilder(theme, layout_mapping=mapping)
+        assert builder._layout_mapping == mapping
+
     def test_save_pptx(self, builder: SlideBuilder, prs: Presentation, tmp_path: Path) -> None:
         builder.build_title(prs, {"title": "저장 테스트"})
         builder.build_timeline(prs, {"title": "TL", "events": [{"date": "2025", "title": "E"}]})
         out = tmp_path / "test.pptx"
         prs.save(str(out))
         assert out.exists()
-        # 다시 열 수 있어야 함
         loaded = Presentation(str(out))
         assert len(loaded.slides) == 2
+
+    def test_create_presentation_with_template(self, tmp_path: Path) -> None:
+        """회사 템플릿 기반 프레젠테이션 생성."""
+        real_template = Path("examples/simple/BMW CI Template.pptx")
+        if not real_template.exists():
+            pytest.skip("BMW CI Template not found")
+
+        tm = ThemeManager()
+        theme = tm.load_theme("dark")
+        mapping = {"title": 0, "section": 1, "content": 7}
+        builder = SlideBuilder(theme, layout_mapping=mapping)
+        prs = builder.create_presentation(template_path=real_template)
+
+        # 기존 슬라이드는 제거되어야 함
+        assert len(prs.slides) == 0
+        # 레이아웃은 유지되어야 함
+        assert len(prs.slide_layouts) == 20
+
+        # 슬라이드 추가 후 저장
+        builder.build_title(prs, {"title": "BMW IT Report"})
+        builder.build_section(prs, {"title": "Chapter 1"})
+        assert len(prs.slides) == 2
+
+        out = tmp_path / "bmw_test.pptx"
+        prs.save(str(out))
+        assert out.exists()

@@ -56,6 +56,15 @@ def generate(  # noqa: B008
         else:
             topic_config = TopicConfig(topic=topic, theme=theme, output_dir=output_dir)
 
+        # 템플릿 등록 확인
+        from ppt_maker.workspace import is_template_registered
+
+        if not is_template_registered():
+            console.print(
+                "[bold yellow]⚠ 회사 템플릿이 등록되지 않았습니다.[/]\n"
+                "  [dim]ppt-maker init --template <파일> 로 등록하면 회사 디자인이 적용됩니다.[/]\n"
+            )
+
         console.print(f"\n[bold]ppt-maker[/] v{__version__}")
         console.print(f"[blue]주제:[/] {topic_config.topic}")
         console.print(f"[blue]테마:[/] {topic_config.theme}")
@@ -98,8 +107,51 @@ def themes() -> None:
 
 
 @app.command()
+def init(  # noqa: B008
+    template: Path = typer.Option(
+        ..., "--template", "-t", help="회사 템플릿 .pptx 파일 경로",
+    ),
+    name: str = typer.Option(
+        "company", "--name", "-n", help="템플릿 이름 (기본: company)",
+    ),
+) -> None:
+    """회사 템플릿을 등록합니다. 최초 1회 실행."""
+    try:
+        from ppt_maker.workspace import register_template
+
+        console.print("\n[bold]ppt-maker[/] 템플릿 등록\n")
+        console.print(f"  파일: {template}")
+        console.print(f"  이름: {name}\n")
+
+        template_dir = register_template(template, name)
+
+        console.print("[bold green]템플릿 등록 완료![/]\n")
+        console.print(f"  저장 위치: {template_dir}")
+
+        # 분석 결과 요약 출력
+        from ppt_maker.template.analyzer import load_manifest
+
+        manifest_path = template_dir / "manifest.toml"
+        if manifest_path.exists():
+            manifest = load_manifest(manifest_path)
+            w, h = manifest.slide_width, manifest.slide_height
+            console.print(f"  슬라이드 크기: {w:.1f} x {h:.1f} inches")
+            console.print(f"  레이아웃: {len(manifest.layouts)}개 감지")
+            if manifest.layout_mapping:
+                console.print("  자동 매핑:")
+                for ppt_type, idx in sorted(manifest.layout_mapping.items()):
+                    console.print(f"    {ppt_type} → [{idx}] {manifest.layouts[idx].name}")
+
+    except PptMakerError as e:
+        console.print(f"[bold red]오류:[/] {e}", err=True)
+        if e.detail:
+            console.print(f"[dim]{e.detail}[/]", err=True)
+        raise typer.Exit(code=1) from e
+
+
+@app.command()
 def check() -> None:
-    """환경 의존성을 검증합니다 (pandoc, 폰트 등)."""
+    """환경 의존성을 검증합니다 (pandoc, 폰트, 템플릿 등)."""
     console.print(f"[bold]ppt-maker[/] v{__version__} 환경 검증\n")
 
     # Python
@@ -130,6 +182,15 @@ def check() -> None:
     tm = ThemeManager()
     theme_count = len(tm.list_themes())
     console.print(f"  테마:    {theme_count}개 사용 가능 [green]OK[/]")
+
+    # 템플릿 등록 상태
+    from ppt_maker.workspace import get_registered_template, is_template_registered
+
+    if is_template_registered():
+        tpl_path = get_registered_template()
+        console.print(f"  템플릿:  [green]등록됨[/] ({tpl_path})")
+    else:
+        console.print("  템플릿:  [yellow]미등록[/] (ppt-maker init --template <파일> 으로 등록)")
 
 
 @app.command()

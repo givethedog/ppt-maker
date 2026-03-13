@@ -49,6 +49,30 @@ def run_pipeline(config: TopicConfig) -> PipelineResult:
         theme = tm.load_theme(config.theme)
         reference_doc = tm.get_reference_pptx(config.theme)
 
+        # 2.5. 회사 템플릿 로드
+        from ppt_maker.workspace import (
+            get_registered_template,
+            get_template_manifest_path,
+        )
+
+        company_template = get_registered_template()
+        layout_mapping: dict[str, int] = {}
+        if company_template:
+            console.print(
+                f"[bold blue]회사 템플릿:[/] {company_template.name}"
+            )
+            manifest_path = get_template_manifest_path()
+            if manifest_path:
+                from ppt_maker.template.analyzer import load_manifest
+
+                manifest = load_manifest(manifest_path)
+                layout_mapping = manifest.layout_mapping
+            else:
+                console.print(
+                    "[yellow]매니페스트 없음 — "
+                    "ppt-maker init --template 으로 재등록하세요[/]"
+                )
+
         # 3. 템플릿 렌더링
         console.print("[bold blue]마크다운 렌더링 중...[/]")
         renderer = TemplateRenderer()
@@ -66,7 +90,11 @@ def run_pipeline(config: TopicConfig) -> PipelineResult:
         # 6. PPTX 변환
         console.print("[bold blue]PPTX 변환 중...[/]")
         pptx_path = config.output_dir / "report.pptx"
-        converter = HybridConverter(theme)
+        converter = HybridConverter(
+            theme,
+            layout_mapping=layout_mapping,
+            template_path=company_template,
+        )
         converter.convert(plan, pptx_path, reference_doc=reference_doc)
 
         # 7. 후처리 (폰트 적용)

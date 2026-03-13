@@ -45,7 +45,11 @@ def build_conversion_plan(
     plan = ConversionPlan()
 
     # 힌트에서 커스텀 슬라이드 명세 추출
-    custom_types = {"timeline", "comparison", "card_list", "process", "quote", "title"}
+    custom_types = {
+        "timeline", "comparison", "card_list", "process", "quote", "title",
+        "section", "picture_left", "picture_right", "blank", "blank_dark",
+        "keynote",
+    }
 
     for hint in hints:
         if hint.slide_type in custom_types or hint.conversion_strategy == "custom":
@@ -63,9 +67,15 @@ def build_conversion_plan(
 class HybridConverter:
     """pandoc + python-pptx 하이브리드 변환 엔진."""
 
-    def __init__(self, theme: ThemeConfig) -> None:
+    def __init__(
+        self,
+        theme: ThemeConfig,
+        layout_mapping: dict[str, int] | None = None,
+        template_path: Path | None = None,
+    ) -> None:
         self.theme = theme
-        self.builder = SlideBuilder(theme)
+        self.template_path = template_path
+        self.builder = SlideBuilder(theme, layout_mapping=layout_mapping)
 
     def convert(
         self,
@@ -90,10 +100,16 @@ class HybridConverter:
                 logger.warning("pandoc 변환 실패, 커스텀 슬라이드만으로 진행: %s", e)
                 pandoc_pptx = None
 
+        # 회사 템플릿이 있으면 reference_doc으로도 사용
+        if reference_doc is None and self.template_path:
+            reference_doc = self.template_path
+
         # Step 2: 커스텀 슬라이드 생성
         custom_prs = None
         if plan.custom_slides:
-            custom_prs = self.builder.create_presentation()
+            custom_prs = self.builder.create_presentation(
+                template_path=self.template_path,
+            )
             for spec in plan.custom_slides:
                 try:
                     self.builder.build_slide(custom_prs, spec.slide_type, spec.data)
@@ -127,10 +143,16 @@ class HybridConverter:
     def _merge_custom_slides(self, base_path: Path, custom_prs: Presentation) -> None:
         """커스텀 슬라이드를 기존 PPTX에 병합.
 
-        현재는 단순히 커스텀 프레젠테이션의 슬라이드를 별도 파일로 저장하고
-        로그로 안내합니다. 완전한 슬라이드 병합은 향후 구현.
+        현재는 커스텀 슬라이드를 별도 파일로 저장하고 사용자에게 안내합니다.
+        완전한 슬라이드 병합은 향후 구현.
         """
         custom_count = len(custom_prs.slides)
-        logger.info(
-            "커스텀 슬라이드 %d개 생성됨 (병합은 향후 구현 예정)", custom_count,
+        custom_path = base_path.with_name(
+            base_path.stem + "_custom" + base_path.suffix
+        )
+        custom_prs.save(str(custom_path))
+        logger.warning(
+            "커스텀 슬라이드 %d개가 별도 파일로 저장됨: %s "
+            "(자동 병합은 향후 구현 예정)",
+            custom_count, custom_path,
         )
