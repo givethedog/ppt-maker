@@ -65,14 +65,29 @@ def _parse_markdown_sections(markdown: str) -> list[dict]:
 
 
 def _content_to_items(content: str) -> list[str]:
-    """마크다운 bullet 리스트를 문자열 리스트로 변환."""
-    items = []
+    """마크다운 콘텐츠를 프레젠테이션 항목 리스트로 변환.
+
+    불릿 라인뿐 아니라 의미 있는 비불릿 단락도 항목으로 포함하여
+    콘텐츠 유실을 방지합니다.
+    """
+    items: list[str] = []
+    # 테이블/구분선 등 프레젠테이션에 부적절한 라인 건너뛰기
+    skip_prefixes = ("|", "---", "```")
     for line in content.split("\n"):
         stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith(skip_prefixes):
+            continue
+        # 불릿 라인
         if stripped.startswith(("- ", "* ", "• ")):
             items.append(stripped[2:].strip())
+        # 번호 매기기 라인
         elif stripped.startswith(("1.", "2.", "3.", "4.", "5.", "6.", "7.", "8.", "9.")):
             items.append(stripped.split(".", 1)[1].strip() if "." in stripped else stripped)
+        # 의미 있는 비불릿 단락 (빈 줄, 마크다운 문법 제외)
+        else:
+            items.append(stripped)
     return items
 
 
